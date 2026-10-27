@@ -1,0 +1,230 @@
+<Window x:Class="CalendarWidget.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="月曆小工具　設定"
+        Width="720" Height="640" MinWidth="640" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Microsoft JhengHei UI" FontSize="13"
+        Background="#F3F4F8">
+    <Window.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#2B3A67" />
+            <Setter Property="Margin" Value="2,6,0,6" />
+        </Style>
+        <Style x:Key="SectionCard" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D5D8E3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="16,6,16,6" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="SettingRow" TargetType="Grid">
+            <Setter Property="Margin" Value="0,9,0,9" />
+        </Style>
+        <Style x:Key="RowLabel" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,3,12,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6B6F7B" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TabControl x:Name="Tabs" Grid.Row="0">
+            <TabItem Header="一般">
+                <ScrollViewer x:Name="GeneralScroll" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="18,14,18,18">
+                        <TextBlock Text="調整完按下方的「儲存」才會生效（透明度會在拖動時即時預覽）。" Style="{StaticResource Hint}" Margin="2,0,0,12" />
+
+                        <!-- ───────── 外觀 ───────── -->
+                        <TextBlock Text="外觀" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="透明度" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Slider x:Name="OpacitySlider" Minimum="30" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                                                    Width="240" VerticalAlignment="Center" />
+                                            <TextBlock x:Name="OpacityText" Width="50" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Text="整個月曆（包含文字）一起變透明。" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="整體大小" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <ComboBox x:Name="ScaleBox" Width="170" HorizontalAlignment="Left" />
+                                        <TextBlock Text="月曆整個（連文字一起）等比例放大或縮小。" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="下方清單文字大小" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <ComboBox x:Name="DetailScaleBox" Width="170" HorizontalAlignment="Left" />
+                                        <TextBlock Text="只調整月曆下方「選取日期的行程與待辦」，不影響上面的月曆。" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="下方清單圓點大小" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <ComboBox x:Name="DotScaleBox" Width="170" HorizontalAlignment="Left" />
+                                        <TextBlock Text="清單前面代表各日曆顏色的圓點，最大可以跟待辦的方框一樣大。上面月曆格子裡的圓點不受影響。" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="一週的第一天" Style="{StaticResource RowLabel}" />
+                                    <ComboBox x:Name="WeekStartBox" Grid.Column="1" Width="170" HorizontalAlignment="Left" />
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="位置" Style="{StaticResource RowLabel}" />
+                                    <CheckBox x:Name="LockBox" Grid.Column="1" Content="鎖定月曆位置（不會被不小心拖走）" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ───────── 資料 ───────── -->
+                        <TextBlock Text="資料" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource SectionCard}">
+                            <Grid Style="{StaticResource SettingRow}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="外部日曆載入範圍" Style="{StaticResource RowLabel}" />
+                                <StackPanel Grid.Column="1">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="往前" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <ComboBox x:Name="LoadPastBox" Width="100" />
+                                        <TextBlock Text="往後" VerticalAlignment="Center" Margin="18,0,8,0" />
+                                        <ComboBox x:Name="LoadFutureBox" Width="100" />
+                                    </StackPanel>
+                                    <TextBlock Text="Google、ICS 來源會載入今天前後這段時間的行程；範圍越大，第一次下載越久。本機檔案（例如「ICS 產生」做的節日檔）不受這個限制。" Style="{StaticResource Hint}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- ───────── 提醒 ───────── -->
+                        <TextBlock Text="提醒" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="節日提醒" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <CheckBox x:Name="ReminderBox" Content="開啟節日提醒" />
+                                        <TextBlock Text="隔天是節日時跳出提醒框，直到你按「好」為止。節日來自類型設為「節日」的日曆。" Style="{StaticResource Hint}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <TextBlock Text="每隔" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <ComboBox x:Name="ReminderIntervalBox" Width="100" />
+                                            <TextBlock Text="提醒，只在" VerticalAlignment="Center" Margin="8,0,6,0" />
+                                            <ComboBox x:Name="ReminderStartBox" Width="74" />
+                                            <TextBlock Text="到" VerticalAlignment="Center" Margin="6,0,6,0" />
+                                            <ComboBox x:Name="ReminderEndBox" Width="74" />
+                                            <TextBlock Text="之間" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="ReminderHint" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="行程提醒" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <ComboBox x:Name="EventModeBox" Width="320" HorizontalAlignment="Left" />
+                                        <StackPanel x:Name="EventCustomPanel" Orientation="Horizontal" Margin="0,8,0,0">
+                                            <TextBlock Text="開始前" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <ComboBox x:Name="EventMinutesBox" Width="110" />
+                                            <TextBlock Text="提醒" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="EventReminderHint" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ───────── 系統 ───────── -->
+                        <TextBlock Text="系統" Style="{StaticResource SectionTitle}" />
+                        <Border Style="{StaticResource SectionCard}">
+                            <Grid Style="{StaticResource SettingRow}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="開機" Style="{StaticResource RowLabel}" />
+                                <CheckBox x:Name="AutoStartBox" Grid.Column="1" Content="開機後自動啟動月曆小工具" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="日曆">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Margin="16,14,16,6" Foreground="#666" TextWrapping="Wrap"
+                               Text="所有可以顯示的日曆都在這裡，不管來自哪個帳號。勾選要顯示的、選類型（「節日」才會觸發前一天的提醒）和顏色，按住每列最左邊的 ⠿ 上下拖曳調整順序：排在前面的，圓點和清單都排在前面。" />
+                    <ScrollViewer x:Name="CalendarScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="6,0,6,6">
+                        <StackPanel x:Name="CalendarRows" Margin="10,0" Background="Transparent" />
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="ICS 來源">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Margin="16,14,16,6" Foreground="#666" TextWrapping="Wrap"
+                               Text="貼上 ICS 網址（Google 日曆的「iCal 格式的私人網址」、節日日曆、其他網站提供的 .ics 都可以）。網址等同日曆的鑰匙，程式會加密後只存在這台電腦。顯示與否、顏色、類型和順序，到「日曆」分頁設定。" />
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="6,0">
+                        <StackPanel x:Name="SourceList" Margin="10,0" />
+                    </ScrollViewer>
+                    <Button Grid.Row="2" x:Name="AddSourceButton" Content="＋ 新增 ICS 來源" HorizontalAlignment="Left"
+                            Margin="16,8,16,12" Padding="14,5" />
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Google 帳號">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="GoogleHost" Margin="20" />
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="ICS 產生">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="IcsMakerHost" Margin="20" />
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="SaveButton" Content="儲存" Width="90" Padding="0,5" Margin="0,0,8,0" />
+            <Button x:Name="SaveCloseButton" Content="儲存並關閉" Width="110" Padding="0,5" Margin="0,0,8,0" IsDefault="True" />
+            <Button x:Name="CancelButton" Content="取消" Width="90" Padding="0,5" />
+        </StackPanel>
+    </Grid>
+</Window>

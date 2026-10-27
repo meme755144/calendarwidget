@@ -1,0 +1,93 @@
+<Window x:Class="CalendarWidget.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CalendarWidget"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual"
+        FontFamily="Microsoft JhengHei UI"
+        UseLayoutRounding="True">
+    <Window.Resources>
+        <!-- 滑到有事項的日期時顯示的提示：深色圓角，跟月曆一致 -->
+        <Style x:Key="DayTip" TargetType="ToolTip">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="HasDropShadow" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="#F51E1E2E" BorderBrush="#66FFFFFF" BorderThickness="1" CornerRadius="8" Padding="10,8">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- 底色是完全不透明的；透明度滑桿（設定 → 一般）調的是整個月曆，100% 就是真的不透明 -->
+    <Border x:Name="Root" CornerRadius="12" Padding="10" Background="#FF1E1E2E">
+        <StackPanel>
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border x:Name="PrevButton" Grid.Column="0" CornerRadius="6" Background="Transparent" Cursor="Hand">
+                    <TextBlock Text="‹" FontSize="20" Foreground="#E0E0F0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <!-- 年和月各自可以點：點年選年、點月選月 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border x:Name="YearButton" CornerRadius="6" Background="Transparent" Cursor="Hand" Padding="6,2">
+                        <TextBlock x:Name="YearText" FontSize="15" FontWeight="SemiBold" Foreground="#F5F5FF" />
+                    </Border>
+                    <Border x:Name="MonthButton" CornerRadius="6" Background="Transparent" Cursor="Hand" Padding="6,2">
+                        <TextBlock x:Name="MonthText" FontSize="15" FontWeight="SemiBold" Foreground="#F5F5FF" />
+                    </Border>
+                </StackPanel>
+                <Border x:Name="NextButton" Grid.Column="2" CornerRadius="6" Background="Transparent" Cursor="Hand">
+                    <TextBlock Text="›" FontSize="20" Foreground="#E0E0F0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <Border x:Name="TodayButton" Grid.Column="3" CornerRadius="6" Background="#335B8DEF" Cursor="Hand" Padding="9,3" Margin="4,0,0,0">
+                    <TextBlock Text="今天" FontSize="12" Foreground="#CFE0FF" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <UniformGrid x:Name="WeekdayRow" Columns="7" Rows="1" />
+            <UniformGrid x:Name="DayGrid" Columns="7" Rows="6" />
+            <!-- 點月份標題時，取代上面兩塊的「選年月」畫面（高度跟日期區一樣，視窗不會跳動） -->
+            <UniformGrid x:Name="MonthPicker" Columns="3" Rows="4" Width="266" Height="280" Visibility="Collapsed" />
+
+            <Border x:Name="DetailPanel" Margin="0,8,0,0" Padding="10,8" CornerRadius="8" Background="#26FFFFFF">
+                <StackPanel>
+                    <!-- 整行「X 月 X 日　週X」都可以點，點一下收合或展開；右邊的小箭頭只是提示目前的狀態 -->
+                    <Border x:Name="DetailHeader" CornerRadius="5" Background="Transparent" Cursor="Hand" Padding="6,3" Margin="-6,-3,-6,-3">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="DetailTitle" Grid.Column="0" FontSize="13" FontWeight="SemiBold" Foreground="#F5F5FF" VerticalAlignment="Center" />
+                            <TextBlock x:Name="CollapseGlyph" Grid.Column="1" Text="▴" FontSize="13" Foreground="#9A9AB4" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <StackPanel x:Name="DetailBody" Margin="0,4,0,0">
+                        <StackPanel x:Name="DetailList" />
+                        <Grid Margin="0,6,0,0">
+                            <TextBox x:Name="TodoInput" FontSize="12" MaxLength="100" Padding="6,4"
+                                     Foreground="#F5F5FF" CaretBrush="#F5F5FF" Background="#26FFFFFF"
+                                     BorderBrush="#66FFFFFF" BorderThickness="1" />
+                            <TextBlock x:Name="TodoHint" Text="＋ 新增待辦，按 Enter" FontSize="12" Foreground="#B3B5CC"
+                                       IsHitTestVisible="False" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Border>
+</Window>

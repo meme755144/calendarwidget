@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Web.Extensions" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Sources.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Json.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Ics.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+  </ItemGroup>
+</Project>

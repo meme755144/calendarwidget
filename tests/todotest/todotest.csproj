@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+google-client.json
+bin/
+obj/
+
+*.user
+.vs/
