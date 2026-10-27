@@ -10,16 +10,9 @@
     <RootNamespace>CalendarWidget</RootNamespace>
     <DebugType>none</DebugType>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- 輸出放在倉庫根目錄的 bin\（跟搬資料夾之前一樣），exe 路徑不變 -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\bin\</BaseOutputPath>
   </PropertyGroup>
-
-  <!-- tests 資料夾裡是獨立的測試專案，不能被編進小工具本體 -->
-  <ItemGroup>
-    <Compile Remove="tests\**" />
-    <EmbeddedResource Remove="tests\**" />
-    <None Remove="tests\**" />
-    <Page Remove="tests\**" />
-    <ApplicationDefinition Remove="tests\**" />
-  </ItemGroup>
 
   <!-- 專案資料夾裡有 google-client.json 就把它包進程式（內建 Google 用戶端），沒有就不包 -->
   <ItemGroup Condition="Exists('google-client.json')">

@@ -7,12 +7,12 @@
   <ItemGroup>
     <Reference Include="WindowsBase" />
     <Reference Include="System.Security" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\EventReminder.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\WheelStepper.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\AddEventLogic.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\RowReorder.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Reminders\EventReminder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\UI\WheelStepper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\UI\AddEventLogic.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\UI\RowReorder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Settings.cs" />
   </ItemGroup>
 </Project>

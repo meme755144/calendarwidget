@@ -5,8 +5,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Settings.cs" />
   </ItemGroup>
 </Project>

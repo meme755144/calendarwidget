@@ -8,11 +8,11 @@
     <Reference Include="WindowsBase" />
     <Reference Include="System.Security" />
     <Reference Include="System.Web.Extensions" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Sources.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Json.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Ics.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\Sources.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Json.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\Ics.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Settings.cs" />
   </ItemGroup>
 </Project>

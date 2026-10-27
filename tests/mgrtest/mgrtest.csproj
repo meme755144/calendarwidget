@@ -9,15 +9,15 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="WindowsBase" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Json.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Accounts.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\GoogleStore.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\GoogleAuth.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\GoogleClient.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\GoogleManager.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Storage.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Models.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\Settings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Json.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Accounts\Accounts.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Accounts\Google\GoogleStore.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Accounts\Google\GoogleAuth.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Accounts\Google\GoogleClient.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Accounts\Google\GoogleManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Settings.cs" />
   </ItemGroup>
 </Project>
 
