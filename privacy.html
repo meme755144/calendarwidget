@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>隱私權政策 Privacy Policy － 月曆小工具 CalendarWidget</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="月曆小工具標誌">
+  <div>
+    <h1>隱私權政策 <span class="lang">Privacy Policy</span></h1>
+    <nav><a href="index.html">首頁 Home</a><a href="privacy.html">隱私權政策 Privacy Policy</a><a href="terms.html">服務條款 Terms of Service</a></nav>
+  </div>
+</header>
+<p class="lang">最後更新 Last updated：2026-10-27</p>
+
+<h2>一句話說明</h2>
+<p>月曆小工具（以下稱「本程式」）是安裝在你電腦上的桌面程式。<strong>你的行程、待辦與 Google 資料只存在你自己的電腦，開發者沒有伺服器，也不會收到、蒐集或儲存你的任何資料。</strong></p>
+
+<h2>本程式會存取哪些資料</h2>
+<p>只有在你選擇「連接 Google 帳號」並在 Google 的授權頁面同意後，本程式才會存取你的 Google 帳號資料，範圍如下：</p>
+<ul>
+  <li><strong>Google 日曆（唯讀）</strong>：<code>calendar.readonly</code> — 讀取你的日曆清單與行程（標題、日期、時間、提醒設定），顯示在桌面月曆上。</li>
+  <li><strong>Google 待辦（唯讀）</strong>：<code>tasks.readonly</code> — 讀取你有到期日的待辦，顯示在桌面月曆上。</li>
+  <li><strong>Google 日曆行程（讀寫）</strong>：<code>calendar.events</code> — <em>只有在你第一次要求本程式新增、修改或刪除行程時才會另外請你授權</em>。本程式只會在你按下對應按鈕時，才新增、修改（標題與時間）或刪除你指定的那一筆行程，不會自己更動你的日曆。</li>
+</ul>
+<p>此外，你可以自行輸入 ICS 日曆網址，本程式會從該網址下載日曆內容；本機行程與本機待辦則完全不經過網路。</p>
+
+<h2>資料如何使用</h2>
+<p>取得的 Google 資料只用於一個目的：在你的電腦上顯示你的行程與待辦、依你的設定跳出提醒，以及執行你主動要求的新增、修改、刪除。不會用於廣告、分析、行銷、訓練任何模型，也不會提供給任何第三方。</p>
+
+<h2>資料存放在哪裡、如何保護</h2>
+<ul>
+  <li>所有資料都存放在你電腦上使用者目錄底下的 <code>%APPDATA%\CalendarWidget</code> 與 <code>%LOCALAPPDATA%\CalendarWidget</code>。</li>
+  <li>Google 的登入憑證（refresh token）與 ICS 網址，使用 Windows 資料保護 API（DPAPI）加密後儲存，只有你的 Windows 使用者帳號能解開。</li>
+  <li>為了離線也能顯示，程式會在本機快取近期行程的標題與時間。</li>
+  <li>本程式與 Google 之間的連線使用 HTTPS；授權採用 OAuth 2.0（PKCE），登入在你的瀏覽器中完成，本程式看不到你的 Google 密碼。</li>
+</ul>
+
+<h2>分享與揭露</h2>
+<p>本程式不會把任何資料傳給開發者或第三方。程式只會連到下列網址：Google 的 API（<code>googleapis.com</code>、<code>accounts.google.com</code>）、你自己輸入的 ICS 網址，以及在你使用「ICS 產生」功能時，下載公開的台灣行事曆資料（<code>cdn.jsdelivr.net</code>，內容為政府公開的辦公日曆表，不含你的任何資料）。本程式沒有使用任何統計、分析或當機回報服務。</p>
+
+<h2>你的選擇與控制</h2>
+<ul>
+  <li><strong>中斷連接</strong>：在程式「設定 → Google 帳號」按「中斷連接」，程式會通知 Google 撤銷授權，並刪除本機的憑證與日曆快取。</li>
+  <li><strong>隨時撤銷</strong>：你也可以到 <a href="https://myaccount.google.com/permissions">Google 帳號的第三方存取權設定</a>移除本程式的存取權。</li>
+  <li><strong>刪除資料</strong>：解除安裝後刪除上述兩個資料夾，就會移除本程式存放的全部資料。</li>
+</ul>
+
+<h2>Google API 服務使用者資料政策</h2>
+<p>本程式從 Google API 取得之資訊的使用與轉移，符合 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>，包含 Limited Use 的規定。</p>
+
+<h2>兒童</h2>
+<p>本程式不是針對兒童設計，也不會蒐集任何人的個人資料。</p>
+
+<h2>政策更新</h2>
+<p>如果日後本程式處理資料的方式有改變，會在這個頁面更新並修改「最後更新」日期。</p>
+
+<h2>聯絡</h2>
+<p>如有問題請來信：<a href="mailto:meme755144@gmail.com">meme755144@gmail.com</a></p>
+
+<h2>English summary</h2>
+<p>CalendarWidget is a desktop program that runs on your computer. <strong>Your events, to-dos and Google data stay on your own computer. The developer operates no servers and never receives, collects or stores your data.</strong></p>
+<ul>
+  <li><strong>Data accessed</strong> (only after you choose "Connect Google account" and consent on Google's page): your Google Calendar list and events (<code>calendar.readonly</code>), Google Tasks with due dates (<code>tasks.readonly</code>), and — only when you first ask the app to create, edit or delete an event — event write access (<code>calendar.events</code>). The app changes an event only when you press the corresponding button.</li>
+  <li><strong>Use</strong>: solely to display your events and tasks on your desktop, show reminders you configured, and perform the create/edit/delete actions you request. No advertising, analytics, marketing, model training, or sharing with third parties.</li>
+  <li><strong>Storage</strong>: locally in <code>%APPDATA%\CalendarWidget</code> and <code>%LOCALAPPDATA%\CalendarWidget</code>. The Google refresh token and ICS URLs are encrypted with Windows DPAPI. Recent event titles and times are cached locally for offline display. Sign-in uses OAuth 2.0 with PKCE in your browser; the app never sees your Google password.</li>
+  <li><strong>Network</strong>: the app only contacts Google APIs, ICS URLs you enter, and (for the holiday generator) public Taiwan government calendar data via <code>cdn.jsdelivr.net</code>. No telemetry or crash reporting.</li>
+  <li><strong>Your control</strong>: "Disconnect" in Settings → Google revokes the grant at Google and deletes the local credentials and calendar cache. You can also revoke access at <a href="https://myaccount.google.com/permissions">your Google Account permissions page</a>. Uninstalling and deleting the two folders removes all data.</li>
+  <li>The app's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
+</ul>
+<p>Contact: <a href="mailto:meme755144@gmail.com">meme755144@gmail.com</a></p>
+
+<footer>月曆小工具 CalendarWidget</footer>
+</body>
+</html>
