@@ -2,7 +2,7 @@
 
 Windows 桌面月曆小工具：C# WPF（.NET Framework 4.8），不需要安裝其他東西。
 
-功能：月曆、ICS 來源、Google 日曆與待辦（讀取、新增、編輯、刪除行程）、本機待辦與行程、節日與行程提醒、依條件產生台灣節日 ICS。
+功能：月曆、ICS 來源、Google 日曆與待辦（讀取、新增、編輯、刪除行程）、本機待辦與行程、節日與行程提醒、依條件產生台灣節日 ICS、平日放假日標紅字。
 
 ## 專案結構
 
@@ -47,9 +47,9 @@ dotnet build CalendarWidget.sln -c Release
 ## 資料位置
 
 - `%APPDATA%\CalendarWidget\`：設定、待辦、本機行程、日曆清單
-- `%LOCALAPPDATA%\CalendarWidget\`：加密的網址與 Google 憑證、快取
+- `%LOCALAPPDATA%\CalendarWidget\`：加密的網址與 Google 憑證、快取（含 `holidays\` 放假日資料）
 - 環境變數 `CALENDARWIDGET_DATA` 可改成別的資料夾（測試用）
 
 ## 節日資料
 
-「ICS 產生」使用行政院人事行政總處的「政府行政機關辦公日曆表」（政府資料開放授權條款第 1 版），經 [ruyut/TaiwanCalendar](https://github.com/ruyut/TaiwanCalendar) 整理成 JSON。
+「ICS 產生」與月曆上的「放假日標示」（平日的補假、連假標紅字；下載後快取在 `%LOCALAPPDATA%\CalendarWidget\holidays\`，每週更新）使用行政院人事行政總處的「政府行政機關辦公日曆表」（政府資料開放授權條款第 1 版），經 [ruyut/TaiwanCalendar](https://github.com/ruyut/TaiwanCalendar) 整理成 JSON。

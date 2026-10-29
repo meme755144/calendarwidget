@@ -69,6 +69,15 @@ namespace CalendarWidget
         // 下載某一年的資料並解析（會卡住呼叫的執行緒，請在背景執行緒呼叫）。失敗丟 InvalidDataException 或 WebException
         public static List<HolidayEntry> Download(int year)
         {
+            string error;
+            var entries = Parse(FetchText(year), year, out error);
+            if (entries == null) throw new InvalidDataException(error);
+            return entries;
+        }
+
+        // 只下載某一年的原始 JSON 文字（要存快取時用，內容還沒檢查）。失敗的情況同 Download
+        public static string FetchText(int year)
+        {
             ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;   // TLS 1.2
             var req = (HttpWebRequest)WebRequest.Create(DataUrl(year));
             req.UserAgent = "CalendarWidget/1.0";
@@ -91,11 +100,7 @@ namespace CalendarWidget
                     throw new InvalidDataException("還沒有 " + year + " 年的資料（官方通常 6 月以後才公布次年度）");
                 throw;
             }
-
-            string error;
-            var entries = Parse(text, year, out error);
-            if (entries == null) throw new InvalidDataException(error);
-            return entries;
+            return text;
         }
 
         // 解析 JSON 陣列：[{"date":"20260101","week":"四","isHoliday":true,"description":"開國紀念日"}, ...]

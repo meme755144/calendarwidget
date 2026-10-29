@@ -129,6 +129,7 @@ namespace CalendarWidget
             WeekStartBox.SelectedIndex = _settings.WeekStartsOnMonday ? 1 : 0;
 
             LockBox.IsChecked = _settings.LockPosition;
+            MarkOffDaysBox.IsChecked = _settings.MarkOffDays;
 
             foreach (var s in DetailScales) DetailScaleBox.Items.Add(s.Key);
             int di = Array.FindIndex(DetailScales, s => Math.Abs(s.Value - _settings.DetailScale) < 0.005);
@@ -495,6 +496,7 @@ namespace CalendarWidget
             bool rangeChanged = oldPast != _settings.LoadPastMonths || oldFuture != _settings.LoadFutureMonths;
             _settings.WeekStartsOnMonday = WeekStartBox.SelectedIndex == 1;
             _settings.LockPosition = LockBox.IsChecked == true;
+            _settings.MarkOffDays = MarkOffDaysBox.IsChecked == true;
             _settings.EventReminderMode = Math.Max(0, EventModeBox.SelectedIndex);
             _settings.EventReminderMinutes = SelectedEventMinutes();
             _settings.HolidayReminder = ReminderBox.IsChecked == true;

@@ -110,6 +110,7 @@
                         <!-- ───────── 資料 ───────── -->
                         <TextBlock Text="資料" Style="{StaticResource SectionTitle}" />
                         <Border Style="{StaticResource SectionCard}">
+                          <StackPanel>
                             <Grid Style="{StaticResource SettingRow}">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <TextBlock Text="外部日曆載入範圍" Style="{StaticResource RowLabel}" />
@@ -123,6 +124,16 @@
                                     <TextBlock Text="Google、ICS 來源會載入今天前後這段時間的行程；範圍越大，第一次下載越久。本機檔案（例如「ICS 產生」做的節日檔）不受這個限制。" Style="{StaticResource Hint}" />
                                 </StackPanel>
                             </Grid>
+
+                            <Grid Style="{StaticResource SettingRow}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="放假日標示" Style="{StaticResource RowLabel}" />
+                                <StackPanel Grid.Column="1">
+                                    <CheckBox x:Name="MarkOffDaysBox" Content="平日的放假（補假、連假）也用紅字標示" />
+                                    <TextBlock Text="資料來自行政院人事行政總處的辦公日曆表，會下載一次存在本機，之後每週更新一次。補班的週六、週日不會標紅。關閉後只標週六、週日，也不會連網。" Style="{StaticResource Hint}" />
+                                </StackPanel>
+                            </Grid>
+                          </StackPanel>
                         </Border>
 
                         <!-- ───────── 提醒 ───────── -->

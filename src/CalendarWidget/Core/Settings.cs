@@ -26,6 +26,7 @@ namespace CalendarWidget
         public double DetailScale = 1.0;             // 月曆下方「選取日期的行程與待辦」的文字大小（只調這一塊）
         public int LoadPastMonths = 6;               // 外部日曆（Google、ICS）載入今天往前幾個月
         public int LoadFutureMonths = 12;            // 往後幾個月
+        public bool MarkOffDays = true;              // 平日的放假（補假、連假）也標紅字；要連網下載行政院的辦公日曆表
         public const int EventReminderPerEvent = 0;  // 依各行程自己的設定（Google 的提醒、ICS 檔案裡的提醒）
         public const int EventReminderCustom = 1;    // 使用者自訂：所有有時間的行程，開始前固定幾分鐘
         public const int EventReminderOff = 2;       // 不提醒
@@ -76,6 +77,7 @@ namespace CalendarWidget
                     else if (key == "DetailScale" && isNumber) s.DetailScale = ClampDetailScale(v);
                     else if (key == "LoadPastMonths" && isNumber && v >= 1 && v <= 60) s.LoadPastMonths = (int)v;
                     else if (key == "LoadFutureMonths" && isNumber && v >= 1 && v <= 60) s.LoadFutureMonths = (int)v;
+                    else if (key == "MarkOffDays") s.MarkOffDays = val != "0";
                     else if (key == "ReminderIntervalMinutes" && isNumber && v >= 1 && v <= 1440) s.ReminderIntervalMinutes = (int)v;
                     else if (key == "ReminderStartHour" && isNumber && v >= 0 && v <= 23) s.ReminderStartHour = (int)v;
                     else if (key == "ReminderEndHour" && isNumber && v >= 1 && v <= 24) s.ReminderEndHour = (int)v;
@@ -135,6 +137,7 @@ namespace CalendarWidget
                     "DetailScale=" + DetailScale.ToString("R", CultureInfo.InvariantCulture),
                     "LoadPastMonths=" + LoadPastMonths.ToString(CultureInfo.InvariantCulture),
                     "LoadFutureMonths=" + LoadFutureMonths.ToString(CultureInfo.InvariantCulture),
+                    "MarkOffDays=" + (MarkOffDays ? "1" : "0"),
                     "HolidayReminder=" + (HolidayReminder ? "1" : "0"),
                     "ReminderIntervalMinutes=" + ReminderIntervalMinutes.ToString(CultureInfo.InvariantCulture),
                     "ReminderStartHour=" + ReminderStartHour.ToString(CultureInfo.InvariantCulture),

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using CalendarWidget;
 
 static class P
@@ -113,6 +114,101 @@ static class P
         Check("download: an unreachable server surfaces as a network error", offline == "WebException", offline);
         Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", null);
         Check("url: default is the jsDelivr copy of ruyut/TaiwanCalendar", HolidayCalendar.DataUrl(2026) == "https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/2026.json");
+
+        // ===== 放假日標示（OffDayStore）：背景下載、快取、退回週六日 =====
+        string cacheDir = Path.Combine(DataPaths.LocalDir, "holidays");
+        if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, true);
+        Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", "http://127.0.0.1:18767/{year}.json");
+        var today = new DateTime(2026, 10, 28);
+        var oct24 = new DateTime(2026, 10, 24);   // 週六
+        var oct25 = new DateTime(2026, 10, 25);   // 週日，光復節
+        var oct26 = new DateTime(2026, 10, 26);   // 週一，補假
+        var oct27 = new DateTime(2026, 10, 27);   // 週二，一般上班日
+
+        var off = new OffDayStore();
+        var arrived = new ManualResetEvent(false);
+        off.Changed += delegate { arrived.Set(); };
+        Check("offdays: with no data yet only Saturday and Sunday count", !off.IsOff(oct26) && !off.IsOff(oct27) && off.IsOff(oct24) && off.IsOff(oct25) && off.Describe(oct26) == null);
+        off.Prefetch(new DateTime(2026, 10, 1), new DateTime(2026, 11, 11), today);
+        Check("offdays: the year arrives in the background and raises Changed", arrived.WaitOne(10000));
+        Check("offdays: a weekday make-up holiday (補假) is off and says why", off.IsOff(oct26) && off.Describe(oct26) == "補假", off.Describe(oct26));
+        Check("offdays: a normal weekday is not off; a plain Saturday is off without a note", !off.IsOff(oct27) && off.Describe(oct27) == null && off.IsOff(oct24) && off.Describe(oct24) == null);
+        Check("offdays: a named holiday on a Sunday keeps its name", off.IsOff(oct25) && off.Describe(oct25) != null && off.Describe(oct25).Contains("光復"), off.Describe(oct25));
+        string cached = Path.Combine(cacheDir, "2026.json");
+        string cacheErr;
+        Check("offdays: the downloaded year is cached as valid JSON", File.Exists(cached) && HolidayCalendar.Parse(File.ReadAllText(cached, Encoding.UTF8), 2026, out cacheErr) != null);
+
+        // 快取有而且很新：就算伺服器連不上也有資料，也不會再下載
+        Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", "http://127.0.0.1:1/{year}.json");
+        var fromCache = new OffDayStore();
+        bool fromCacheChanged = false;
+        fromCache.Changed += delegate { fromCacheChanged = true; };
+        fromCache.Prefetch(new DateTime(2026, 10, 1), new DateTime(2026, 11, 11), today);
+        Thread.Sleep(500);
+        Check("offdays: a fresh cache is used right away, without any download", fromCache.IsOff(oct26) && fromCache.Describe(oct26) == "補假" && !fromCacheChanged);
+
+        // 補班的週六：不放假、不標紅，標題會註明
+        Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", "http://127.0.0.1:18767/{year}.json");
+        var off25 = new OffDayStore();
+        var arrived25 = new ManualResetEvent(false);
+        off25.Changed += delegate { arrived25.Set(); };
+        off25.Prefetch(new DateTime(2025, 2, 1), new DateTime(2025, 2, 28), today);
+        Check("offdays: a past year is downloaded when there is no cache", arrived25.WaitOne(10000));
+        var makeUpSat = new DateTime(2025, 2, 8);   // 週六補班
+        Check("offdays: a make-up Saturday is not off and is labelled 補班日", !off25.IsOff(makeUpSat) && off25.Describe(makeUpSat) == "補班日", off25.Describe(makeUpSat));
+        Check("offdays: the next ordinary Saturday is still off", off25.IsOff(new DateTime(2025, 2, 15)));
+
+        // 過去的年度不會再改：快取再舊也不重新下載
+        string cached25 = Path.Combine(cacheDir, "2025.json");
+        File.SetLastWriteTimeUtc(cached25, DateTime.UtcNow.AddDays(-100));
+        var pastStore = new OffDayStore();
+        bool pastChanged = false;
+        pastStore.Changed += delegate { pastChanged = true; };
+        pastStore.Prefetch(new DateTime(2025, 2, 1), new DateTime(2025, 2, 28), today);
+        Thread.Sleep(700);
+        Check("offdays: an old cache of a past year is kept as is", !pastChanged && pastStore.Describe(makeUpSat) == "補班日" && File.GetLastWriteTimeUtc(cached25) < DateTime.UtcNow.AddDays(-99));
+
+        // 今年的快取超過 7 天：先用舊的，背景更新
+        File.SetLastWriteTimeUtc(cached, DateTime.UtcNow.AddDays(-10));
+        var stale = new OffDayStore();
+        var refreshed = new ManualResetEvent(false);
+        stale.Changed += delegate { refreshed.Set(); };
+        stale.Prefetch(new DateTime(2026, 10, 1), new DateTime(2026, 11, 11), today);
+        Check("offdays: a stale cache of this year is used immediately", stale.IsOff(oct26));
+        Check("offdays: ...and refreshed in the background", refreshed.WaitOne(10000) && File.GetLastWriteTimeUtc(cached) > DateTime.UtcNow.AddDays(-1));
+
+        // 快取壞掉：當作沒有，重新下載
+        File.WriteAllText(cached, "not json", Encoding.UTF8);
+        var broken = new OffDayStore();
+        var healed = new ManualResetEvent(false);
+        broken.Changed += delegate { healed.Set(); };
+        broken.Prefetch(new DateTime(2026, 10, 1), new DateTime(2026, 11, 11), today);
+        Check("offdays: a broken cache file is ignored", !broken.IsOff(oct26));
+        Check("offdays: ...and the data is downloaded again", healed.WaitOne(10000) && broken.IsOff(oct26));
+
+        // 關掉、唯讀、官方還沒公布的年度：不連網、不存檔
+        string cached27 = Path.Combine(cacheDir, "2027.json");
+        var disabled = new OffDayStore { Enabled = false };
+        disabled.Prefetch(new DateTime(2027, 1, 1), new DateTime(2027, 1, 31), today);
+        Settings.ReadOnly = true;
+        var readOnly = new OffDayStore();
+        readOnly.Prefetch(new DateTime(2027, 1, 1), new DateTime(2027, 1, 31), today);
+        Settings.ReadOnly = false;
+        var tooEarly = new OffDayStore();
+        tooEarly.Prefetch(new DateTime(2027, 1, 1), new DateTime(2027, 1, 31), new DateTime(2026, 5, 31));   // 6 月才開放下一年
+        Thread.Sleep(700);
+        Check("offdays: turned off, read-only and not-yet-published years do not download anything", !File.Exists(cached27));
+        Check("offdays: turned off means plain weekend marking even with data cached", !new OffDayStore { Enabled = false }.IsOff(oct26) && new OffDayStore { Enabled = false }.IsOff(oct24));
+
+        // 連不上：退回週六日，不會當掉
+        Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", "http://127.0.0.1:1/{year}.json");
+        var unreachable = new OffDayStore();
+        bool unreachableChanged = false;
+        unreachable.Changed += delegate { unreachableChanged = true; };
+        unreachable.Prefetch(new DateTime(2027, 1, 1), new DateTime(2027, 1, 31), today);
+        Thread.Sleep(1500);
+        Check("offdays: an unreachable server leaves the weekend fallback in place", !unreachableChanged && !unreachable.IsOff(new DateTime(2027, 1, 4)) && unreachable.IsOff(new DateTime(2027, 1, 2)));
+        Environment.SetEnvironmentVariable("CALENDARWIDGET_HOLIDAY_URL", null);
 
         Console.WriteLine(fails == 0 ? "ALL PASS" : fails + " FAILED");
         return fails;

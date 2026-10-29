@@ -51,6 +51,7 @@ namespace CalendarWidget
         private readonly SourceManager _sources;
         private readonly GoogleManager _google;
         private readonly AccountRegistry _accounts;
+        private readonly OffDayStore _offDays = new OffDayStore();
         private readonly HolidayReminder _reminder;
         private readonly EventReminder _eventReminder;
         private SettingsWindow _settingsWindow;
@@ -98,6 +99,8 @@ namespace CalendarWidget
                 TrimMemory();
                 _eventReminder.Recheck();
             };
+            _offDays.Enabled = _settings.MarkOffDays;
+            _offDays.Changed += delegate { Dispatcher.BeginInvoke(new Action(BuildCalendar)); };   // 背景下載好行事曆了，重畫紅字
             Opacity = _settings.Opacity;
             _reminder = new HolidayReminder(_store, _settings, AckStore.Load(DateTime.Today));
             _reminder.Start();
@@ -223,6 +226,7 @@ namespace CalendarWidget
                 DayGrid.Visibility = Visibility.Visible;
 
                 DateTime start = _viewMonth.AddDays(-((((int)_viewMonth.DayOfWeek - FirstDow) + 7) % 7));
+                _offDays.Prefetch(start, start.AddDays(41), DateTime.Today);
                 for (int i = 0; i < 42; i++)
                 {
                     DateTime date = start.AddDays(i);
@@ -494,11 +498,11 @@ namespace CalendarWidget
         private Border MakeDayCell(DateTime date)
         {
             bool inMonth = date.Month == _viewMonth.Month;
-            bool weekend = date.DayOfWeek == DayOfWeek.Sunday || date.DayOfWeek == DayOfWeek.Saturday;
+            bool off = _offDays.IsOff(date);   // 週六日，加上官方公告的平日放假（補班的週六日不算）
             bool today = date == DateTime.Today;
             bool selected = date == _selected;
 
-            Brush fore = today ? Brushes.White : (!inMonth ? TextDim : (weekend ? TextWeekend : TextNormal));
+            Brush fore = today ? Brushes.White : (!inMonth ? TextDim : (off ? TextWeekend : TextNormal));
 
             var number = new TextBlock
             {
@@ -610,6 +614,8 @@ namespace CalendarWidget
         {
             string title = _selected.ToString("M 月 d 日") + "　週" + WeekdayNames[(int)_selected.DayOfWeek];
             if (_selected == DateTime.Today) title += "（今天）";
+            string offNote = _offDays.Describe(_selected);
+            if (offNote != null) title += "　" + offNote;
             DetailTitle.Text = title;
 
             DetailList.Children.Clear();
@@ -928,6 +934,7 @@ namespace CalendarWidget
 
         internal void ApplySettings()
         {
+            _offDays.Enabled = _settings.MarkOffDays;   // 放假日標示可能開了或關了（OnTodosChanged 會重畫月曆）
             _reminder.ScheduleNext();   // 提醒的間隔或時段可能改了
             _eventReminder.Recheck();   // 行程提醒的方式可能改了
             _store.SetOrder(CalendarOrder.Load());   // 日曆順序可能改了

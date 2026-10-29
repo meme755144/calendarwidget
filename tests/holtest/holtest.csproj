@@ -9,6 +9,7 @@
     <Reference Include="System.Security" />
     <Reference Include="System.Web.Extensions" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\HolidayCalendar.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\OffDays.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Json.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\Ics.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
