@@ -107,6 +107,7 @@ namespace CalendarWidget
                 if (arg.StartsWith("--open-settings=")) int.TryParse(arg.Substring("--open-settings=".Length), out tab);
                 window.OpenSettings(tab);
             }
+            if (Array.IndexOf(e.Args, "--typhoon-expand") >= 0) window.ExpandTyphoonForTest();
             if (Array.IndexOf(e.Args, "--settings-end") >= 0) window.ScrollSettingsForTest();
             if (Array.IndexOf(e.Args, "--maker-preview") >= 0) window.MakerPreviewForTest();
             foreach (string arg in e.Args)

@@ -1,0 +1,70 @@
+{
+  "schema": 2,
+  "source": "https://www.dgpa.gov.tw/typh/daily/nds.html",
+  "checkedAt": "2026-10-29T12:00:00.000Z",
+  "pageDate": "2026-10-29",
+  "pageUpdatedAt": "2026-10-29T10:07:15+08:00",
+  "state": "announced",
+  "cities": {
+    "臺北市": [
+      {
+        "date": "2026-10-30",
+        "scope": "",
+        "scopeKind": "city",
+        "work": true,
+        "school": true,
+        "period": "",
+        "from": "",
+        "text": "10/30停止上班、停止上課。"
+      }
+    ],
+    "花蓮縣": [
+      {
+        "unknown": true,
+        "text": "明天全縣停班停課，請注意安全"
+      }
+    ],
+    "高雄市": [
+      {
+        "date": "2026-10-29",
+        "scope": "那瑪夏區",
+        "scopeKind": "area",
+        "work": true,
+        "school": true,
+        "period": "",
+        "from": "",
+        "text": "10/29停止上班、停止上課。"
+      },
+      {
+        "date": "2026-10-30",
+        "scope": "",
+        "scopeKind": "city",
+        "work": true,
+        "school": true,
+        "period": "afternoon",
+        "from": "13:00",
+        "text": "10/30下午01:00起停止上班、停止上課。"
+      }
+    ]
+  },
+  "schools": {
+    "高雄市": [
+      {
+        "date": "2026-10-30",
+        "scope": "高雄市某某國民中學",
+        "scopeKind": "school",
+        "work": false,
+        "school": true,
+        "period": "",
+        "from": "",
+        "text": "10/30照常上班、停止上課。"
+      }
+    ]
+  },
+  "unparsedText": "",
+  "validators": {
+    "etag": "",
+    "lastModified": ""
+  },
+  "error": null
+}

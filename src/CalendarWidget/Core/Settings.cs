@@ -27,6 +27,9 @@ namespace CalendarWidget
         public int LoadPastMonths = 6;               // 外部日曆（Google、ICS）載入今天往前幾個月
         public int LoadFutureMonths = 12;            // 往後幾個月
         public bool MarkOffDays = true;              // 平日的放假（補假、連假）也標紅字；要連網下載行政院的辦公日曆表
+        public bool TyphoonEnabled;                  // 颱風假通知（預設關閉）：定時讀取停班停課資料，有關注的縣市停班停課就跳出提醒
+        public string TyphoonUrl = "";               // 停班停課資料的網址；空的用預設（見 TyphoonFeed.DefaultUrl）。不在設定畫面上，只給開發測試用（直接改 settings.ini）
+        public string TyphoonWatchList = "";         // 關注的縣市與各縣市要通知的鄉鎮區，格式見 TyphoonWatch.Serialize
         public const int EventReminderPerEvent = 0;  // 依各行程自己的設定（Google 的提醒、ICS 檔案裡的提醒）
         public const int EventReminderCustom = 1;    // 使用者自訂：所有有時間的行程，開始前固定幾分鐘
         public const int EventReminderOff = 2;       // 不提醒
@@ -78,6 +81,9 @@ namespace CalendarWidget
                     else if (key == "LoadPastMonths" && isNumber && v >= 1 && v <= 60) s.LoadPastMonths = (int)v;
                     else if (key == "LoadFutureMonths" && isNumber && v >= 1 && v <= 60) s.LoadFutureMonths = (int)v;
                     else if (key == "MarkOffDays") s.MarkOffDays = val != "0";
+                    else if (key == "TyphoonEnabled") s.TyphoonEnabled = val == "1";
+                    else if (key == "TyphoonUrl") s.TyphoonUrl = val;
+                    else if (key == "TyphoonWatch") s.TyphoonWatchList = val;
                     else if (key == "ReminderIntervalMinutes" && isNumber && v >= 1 && v <= 1440) s.ReminderIntervalMinutes = (int)v;
                     else if (key == "ReminderStartHour" && isNumber && v >= 0 && v <= 23) s.ReminderStartHour = (int)v;
                     else if (key == "ReminderEndHour" && isNumber && v >= 1 && v <= 24) s.ReminderEndHour = (int)v;
@@ -138,6 +144,9 @@ namespace CalendarWidget
                     "LoadPastMonths=" + LoadPastMonths.ToString(CultureInfo.InvariantCulture),
                     "LoadFutureMonths=" + LoadFutureMonths.ToString(CultureInfo.InvariantCulture),
                     "MarkOffDays=" + (MarkOffDays ? "1" : "0"),
+                    "TyphoonEnabled=" + (TyphoonEnabled ? "1" : "0"),
+                    "TyphoonUrl=" + (TyphoonUrl ?? "").Replace('\r', ' ').Replace('\n', ' '),
+                    "TyphoonWatch=" + (TyphoonWatchList ?? "").Replace('\r', ' ').Replace('\n', ' '),
                     "HolidayReminder=" + (HolidayReminder ? "1" : "0"),
                     "ReminderIntervalMinutes=" + ReminderIntervalMinutes.ToString(CultureInfo.InvariantCulture),
                     "ReminderStartHour=" + ReminderStartHour.ToString(CultureInfo.InvariantCulture),

@@ -35,6 +35,23 @@ if ($errs) { "$t BUILD ERRORS:"; $errs } else {
   $o | ? { $_ -match '^FAIL|CRASH' } | select -First 5
 }
 Stop-Process -Id $hf.Id -Force -ErrorAction SilentlyContinue
+
+# 颱風假：需要假的停班停課資料伺服器
+Get-NetTCPConnection -LocalPort 18768 -State Listen -ErrorAction SilentlyContinue | % { Stop-Process -Id $_.OwningProcess -Force }
+$tf = Start-Process node -ArgumentList "`"$S\typhoonfake.mjs`"" -PassThru -WindowStyle Hidden
+Start-Sleep 1
+$t = 'typhoontest'
+$d = "$W\data_$t"; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d | Out-Null
+$env:CALENDARWIDGET_DATA = $d
+Push-Location "$S\$t"; $b = dotnet build -c Release 2>&1 | Out-String; Pop-Location
+$errs = $b -split "`n" | ? { $_ -match ' error ' } | select -First 3
+if ($errs) { "$t BUILD ERRORS:"; $errs } else {
+  $exe = Get-ChildItem "$S\$t\bin" -Recurse -Filter "$t.exe" | select -First 1
+  $o = & $exe.FullName "$S\data" 2>&1 | % { "$_" }
+  "$t  PASS=" + ($o | ? { $_ -match '^PASS' }).Count + " FAIL=" + ($o | ? { $_ -match '^FAIL|CRASH' }).Count
+  $o | ? { $_ -match '^FAIL|CRASH' } | select -First 5
+}
+Stop-Process -Id $tf.Id -Force -ErrorAction SilentlyContinue
 $f = 'http://127.0.0.1:18766'
 $env:CALENDARWIDGET_GOOGLE_AUTH = "$f/auth"; $env:CALENDARWIDGET_GOOGLE_TOKEN = "$f/token"; $env:CALENDARWIDGET_GOOGLE_REVOKE = "$f/revoke"; $env:CALENDARWIDGET_GOOGLE_CALENDAR = "$f/calendar/v3"; $env:CALENDARWIDGET_GOOGLE_TASKS = "$f/tasks/v1"
 foreach ($t in 'googletest', 'mgrtest') {

@@ -40,7 +40,7 @@
 </ul>
 
 <h2>分享與揭露</h2>
-<p>本程式不會把任何資料傳給開發者或第三方。程式只會連到下列網址：Google 的 API（<code>googleapis.com</code>、<code>accounts.google.com</code>）、你自己輸入的 ICS 網址，以及在你使用「ICS 產生」功能、或開啟「放假日標示」（預設開啟，可在設定關閉）時，下載公開的台灣行事曆資料（<code>cdn.jsdelivr.net</code>，內容為政府公開的辦公日曆表，不含你的任何資料）。本程式沒有使用任何統計、分析或當機回報服務。</p>
+<p>本程式不會把任何資料傳給開發者或第三方。程式只會連到下列網址：Google 的 API（<code>googleapis.com</code>、<code>accounts.google.com</code>）、你自己輸入的 ICS 網址，以及在你使用「ICS 產生」功能、或開啟「放假日標示」（預設開啟，可在設定關閉）時，下載公開的台灣行事曆資料（<code>cdn.jsdelivr.net</code>，內容為政府公開的辦公日曆表，不含你的任何資料）。此外，在你開啟「颱風假通知」（預設關閉）時，程式會定時讀取公開的停班停課整理資料（<code>raw.githubusercontent.com</code>，內容整理自政府公開的網頁，不含你的任何資料）。本程式沒有使用任何統計、分析或當機回報服務。</p>
 
 <h2>你的選擇與控制</h2>
 <ul>
@@ -67,7 +67,7 @@
   <li><strong>Data accessed</strong> (only after you choose "Connect Google account" and consent on Google's page): your Google Calendar list and events (<code>calendar.readonly</code>), Google Tasks with due dates (<code>tasks.readonly</code>), and — only when you first ask the app to create, edit or delete an event — event write access (<code>calendar.events</code>). The app changes an event only when you press the corresponding button.</li>
   <li><strong>Use</strong>: solely to display your events and tasks on your desktop, show reminders you configured, and perform the create/edit/delete actions you request. No advertising, analytics, marketing, model training, or sharing with third parties.</li>
   <li><strong>Storage</strong>: locally in <code>%APPDATA%\CalendarWidget</code> and <code>%LOCALAPPDATA%\CalendarWidget</code>. The Google refresh token and ICS URLs are encrypted with Windows DPAPI. Recent event titles and times are cached locally for offline display. Sign-in uses OAuth 2.0 with PKCE in your browser; the app never sees your Google password.</li>
-  <li><strong>Network</strong>: the app only contacts Google APIs, ICS URLs you enter, and (for the holiday generator and the optional off-day marking, which can be turned off in settings) public Taiwan government calendar data via <code>cdn.jsdelivr.net</code>. No telemetry or crash reporting.</li>
+  <li><strong>Network</strong>: the app only contacts Google APIs, ICS URLs you enter, and (for the holiday generator and the optional off-day marking, which can be turned off in settings) public Taiwan government calendar data via <code>cdn.jsdelivr.net</code>, and, only if you turn on the optional typhoon-day notifications (off by default), a public work/school suspension data file via <code>raw.githubusercontent.com</code>. No telemetry or crash reporting.</li>
   <li><strong>Your control</strong>: "Disconnect" in Settings → Google revokes the grant at Google and deletes the local credentials and calendar cache. You can also revoke access at <a href="https://myaccount.google.com/permissions">your Google Account permissions page</a>. Uninstalling and deleting the two folders removes all data.</li>
   <li>The app's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
 </ul>

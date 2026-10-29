@@ -12,23 +12,32 @@ namespace CalendarWidget
     internal sealed class AckStore
     {
         private readonly HashSet<string> _keys = new HashSet<string>();
+        private readonly string _fileName;
 
-        private static string FilePath { get { return Path.Combine(DataPaths.Dir, "acked.txt"); } }
+        // 節日提醒用 acked.txt；颱風假通知用另一個檔案（typhoon-acked.txt），兩邊的紀錄不會混在一起
+        private AckStore(string fileName) { _fileName = fileName; }
+
+        private string FilePath { get { return Path.Combine(DataPaths.Dir, _fileName); } }
 
         private static string Key(DateTime date, string title)
         {
-            return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\t" + (title ?? "").Replace('\t', ' ').Trim();
+            return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\t" + (title ?? "").Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
         }
 
         public static AckStore Load(DateTime today)
         {
-            var store = new AckStore();
+            return Load(today, "acked.txt");
+        }
+
+        public static AckStore Load(DateTime today, string fileName)
+        {
+            var store = new AckStore(fileName);
             if (Settings.ReadOnly) return store;
             try
             {
-                if (!File.Exists(FilePath)) return store;
+                if (!File.Exists(store.FilePath)) return store;
                 DateTime oldest = today.AddDays(-60);   // 太舊的紀錄用不到，順便清掉
-                foreach (string line in File.ReadAllLines(FilePath, Encoding.UTF8))
+                foreach (string line in File.ReadAllLines(store.FilePath, Encoding.UTF8))
                 {
                     string[] f = line.Split(new[] { '\t' }, 2);
                     DateTime d;
@@ -43,12 +52,22 @@ namespace CalendarWidget
 
         public bool IsAcked(CalendarItem item)
         {
-            return _keys.Contains(Key(item.Date, item.Title));
+            return IsAcked(item.Date, item.Title);
+        }
+
+        public bool IsAcked(DateTime date, string title)
+        {
+            return _keys.Contains(Key(date, title));
         }
 
         public void Ack(IEnumerable<CalendarItem> items)
         {
-            foreach (var item in items) _keys.Add(Key(item.Date, item.Title));
+            Ack(items.Select(i => new KeyValuePair<DateTime, string>(i.Date, i.Title)));
+        }
+
+        public void Ack(IEnumerable<KeyValuePair<DateTime, string>> keys)
+        {
+            foreach (var key in keys) _keys.Add(Key(key.Key, key.Value));
             Save();
         }
 

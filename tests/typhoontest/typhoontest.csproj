@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Web.Extensions" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Typhoon\TyphoonData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Typhoon\TyphoonRules.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Typhoon\TyphoonDistricts.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Typhoon\TyphoonFeed.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Typhoon\TyphoonManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Reminders\TyphoonReminder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Reminders\Reminder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Json.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Storage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Settings.cs" />
+  </ItemGroup>
+</Project>

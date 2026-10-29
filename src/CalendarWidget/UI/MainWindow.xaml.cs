@@ -52,6 +52,8 @@ namespace CalendarWidget
         private readonly GoogleManager _google;
         private readonly AccountRegistry _accounts;
         private readonly OffDayStore _offDays = new OffDayStore();
+        private readonly TyphoonManager _typhoon;
+        private readonly TyphoonReminder _typhoonReminder;
         private readonly HolidayReminder _reminder;
         private readonly EventReminder _eventReminder;
         private SettingsWindow _settingsWindow;
@@ -106,6 +108,13 @@ namespace CalendarWidget
             _reminder.Start();
             _eventReminder = new EventReminder(_store, _settings, EventAckStore.Load(DateTime.Now));
             _eventReminder.Recheck();
+            _typhoon = new TyphoonManager(Dispatcher, _settings);
+            _typhoonReminder = new TyphoonReminder(_typhoon.Alerts, _settings, AckStore.Load(DateTime.Today, "typhoon-acked.txt"));
+            _typhoon.Changed += delegate
+            {
+                BuildCalendar();                  // 公告有變，紅字要跟著變
+                _typhoonReminder.OnDataChanged();   // 有還沒確認的公告就跳出提醒
+            };
             RefreshLocalSources();
             _lastToday = DateTime.Today;
             _selected = _lastToday.AddDays(selectOffsetDays);
@@ -119,6 +128,8 @@ namespace CalendarWidget
             WireEvents();
             CreateTray();
             ScheduleMidnightRefresh();
+            _typhoon.Apply();   // 功能開著才會讀取；關著就什麼都不做
+            _typhoonReminder.Start();
             ContentRendered += delegate
             {
                 TrimMemory();
@@ -498,7 +509,7 @@ namespace CalendarWidget
         private Border MakeDayCell(DateTime date)
         {
             bool inMonth = date.Month == _viewMonth.Month;
-            bool off = _offDays.IsOff(date);   // 週六日，加上官方公告的平日放假（補班的週六日不算）
+            bool off = _offDays.IsOff(date) || _typhoon.IsOff(date);   // 週六日，加上官方公告的平日放假（補班的週六日不算），以及關注的縣市的停班停課
             bool today = date == DateTime.Today;
             bool selected = date == _selected;
 
@@ -619,6 +630,21 @@ namespace CalendarWidget
             DetailTitle.Text = title;
 
             DetailList.Children.Clear();
+            // 颱風假的說明比較長，放在標題下面一行（紅字），不要擠在標題後面把視窗撐寬
+            string typhoonNote = _typhoon.Describe(_selected);
+            if (typhoonNote != null)
+            {
+                DetailList.Children.Add(new TextBlock
+                {
+                    Text = typhoonNote,
+                    FontSize = Fs(12),
+                    Foreground = TextWeekend,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 260,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 0, 0, 3)
+                });
+            }
             var items = _store.For(_selected);
             if (items.Count == 0)
             {
@@ -935,6 +961,8 @@ namespace CalendarWidget
         internal void ApplySettings()
         {
             _offDays.Enabled = _settings.MarkOffDays;   // 放假日標示可能開了或關了（OnTodosChanged 會重畫月曆）
+            _typhoonReminder.ScheduleNext();            // 颱風假通知可能開了、關了，或提醒的間隔、時段改了
+            _typhoon.Apply();                           // 開關、關注的縣市、資料網址可能改了
             _reminder.ScheduleNext();   // 提醒的間隔或時段可能改了
             _eventReminder.Recheck();   // 行程提醒的方式可能改了
             _store.SetOrder(CalendarOrder.Load());   // 日曆順序可能改了
@@ -957,6 +985,11 @@ namespace CalendarWidget
             if (_settingsWindow != null) _settingsWindow.RunHolidayMakerForTest();
         }
 
+        internal void ExpandTyphoonForTest()
+        {
+            if (_settingsWindow != null) _settingsWindow.Dispatcher.BeginInvoke(new Action(delegate { _settingsWindow.ExpandTyphoonAreasForTest(); }), DispatcherPriority.ApplicationIdle);
+        }
+
         internal void ScrollSettingsForTest()
         {
             if (_settingsWindow != null) _settingsWindow.Dispatcher.BeginInvoke(new Action(delegate { _settingsWindow.ScrollGeneralToEnd(); }), DispatcherPriority.ApplicationIdle);
@@ -969,7 +1002,7 @@ namespace CalendarWidget
                 WindowHelper.BringToFront(_settingsWindow);
                 return;
             }
-            _settingsWindow = new SettingsWindow(_settings, _sources, _google, PreviewOpacity, ApplySettings);
+            _settingsWindow = new SettingsWindow(_settings, _sources, _google, _typhoon, PreviewOpacity, ApplySettings);
             _settingsWindow.Closed += delegate
             {
                 _settingsWindow = null;
@@ -1172,6 +1205,8 @@ namespace CalendarWidget
             _sources.RefreshDue();   // 睡眠醒來或跨日後，補抓到期的來源
             _accounts.RefreshDue();
             _reminder.ScheduleNext();   // 睡眠期間計時器可能錯過時間，重新對齊下一次檢查
+            _typhoonReminder.ScheduleNext();
+            _typhoon.RefreshDue();      // 睡眠醒來或跨日後，補讀一次停班停課資料
             _eventReminder.Recheck();
         }
 

@@ -39,7 +39,7 @@ namespace CalendarWidget
         private readonly Action _applied;
         private readonly List<Card> _cards = new List<Card>();
 
-        internal SettingsWindow(Settings settings, SourceManager manager, GoogleManager google, Action<double> previewOpacity, Action applied)
+        internal SettingsWindow(Settings settings, SourceManager manager, GoogleManager google, TyphoonManager typhoon, Action<double> previewOpacity, Action applied)
         {
             InitializeComponent();
 
@@ -53,6 +53,7 @@ namespace CalendarWidget
             _settings = settings;
             _manager = manager;
             _google = google;
+            _typhoon = typhoon;
             _previewOpacity = previewOpacity;
             _applied = applied;
 
@@ -73,6 +74,7 @@ namespace CalendarWidget
             foreach (var src in manager.Sources) AddCard(src, false);
             BuildGoogleTab();
             BuildIcsMakerTab();
+            BuildTyphoonTab();
             WireCalendarDrag();
             RebuildCalendarList();
 
@@ -98,6 +100,7 @@ namespace CalendarWidget
             {
                 _manager.StatusChanged -= RefreshStatuses;
                 DisposeGoogleTab();
+                DisposeTyphoonTab();
                 _previewOpacity(_settings.Opacity);   // 沒有儲存的預覽一律還原成已儲存的透明度
             };
         }
@@ -323,10 +326,16 @@ namespace CalendarWidget
         }
 
         // 開發檢查畫面用：把「一般」分頁捲到最底下
+        // 開發檢查畫面用：把「目前選的分頁」捲到最底（沒有先選分頁時是「一般」）
         internal void ScrollGeneralToEnd()
         {
-            Tabs.SelectedIndex = 0;
-            GeneralScroll.ScrollToEnd();
+            var scroll = Tabs.SelectedContent as ScrollViewer;
+            if (scroll == null)
+            {
+                Tabs.SelectedIndex = 0;
+                scroll = GeneralScroll;
+            }
+            scroll.ScrollToEnd();
         }
 
         internal void SelectTab(int index)
@@ -478,6 +487,8 @@ namespace CalendarWidget
                 MessageBox.Show(this, "節日提醒的開始時間必須早於結束時間，請調整後再儲存。", "月曆小工具", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
+
+            ReadTyphoonSettings();
 
             var list = new List<CalendarSource>();
             for (int i = 0; i < _cards.Count; i++) list.Add(ToSource(_cards[i], i + 1));

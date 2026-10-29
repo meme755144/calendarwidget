@@ -30,6 +30,35 @@
             <Setter Property="Margin" Value="0,3,12,0" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
+        <!-- 縣市、鄉鎮區的選取鈕：點一下選取，再點一下取消 -->
+        <Style x:Key="Chip" TargetType="ToggleButton">
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="#2B3A67" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#C5CAD9" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#5B8DEF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#5B8DEF" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#5B8DEF" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="Hint" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#6B6F7B" />
             <Setter Property="FontSize" Value="12" />
@@ -228,6 +257,12 @@
             <TabItem Header="ICS 產生">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="IcsMakerHost" Margin="20" />
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="颱風假">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="TyphoonHost" Margin="20" />
                 </ScrollViewer>
             </TabItem>
         </TabControl>
