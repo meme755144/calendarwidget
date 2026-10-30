@@ -5,7 +5,7 @@
 ## 發版前
 
 1. 工作區要乾淨，`./tests/run-all.ps1` 全部通過。
-2. 改 `src/CalendarWidget/CalendarWidget.csproj` 的 `<Version>`，並在 `CHANGELOG.md` 最上面加上新版本的段落（標題格式 `## [x.y.z] - YYYY-MM-DD`）。兩邊的版本號必須一致，`updatetest` 會檢查，忘了改會測試失敗。
+2. 改 `src/CalendarWidget/CalendarWidget.csproj` 的 `<Version>`，並在 `CHANGELOG.md` 最上面加上新版本的段落（標題格式 `## [x.y.z] - YYYY-MM-DD`，日期是發版當天）。兩邊的版本號必須一致，`updatetest` 會檢查，忘了改會測試失敗。
 3. commit 並 push。
 
 ## 建置與打包
@@ -28,10 +28,27 @@
 
 ## 在 GitHub 發佈
 
+做法有兩種，擇一。
+
+**用 GitHub CLI（`gh`，先 `gh auth login` 登入一次）：** 內文存成一個檔（CHANGELOG 該版本的內容，不含 `## [x.y.z]` 那行標題，再加一行 SHA256），然後：
+
+```
+gh release create vx.y.z CalendarWidget-x.y.z.zip --repo meme755144/calendarwidget --target <commit> --title vx.y.z --notes-file notes.md --latest
+```
+
+`--target` 要是已經 push 的 commit；這個指令會一併建立 tag。
+
+**用網頁：**
+
 1. 打 tag 並 push：`git tag vx.y.z` → `git push origin vx.y.z`。
-2. GitHub → Releases → Draft a new release：選剛才的 tag，標題 `vx.y.z`，內文貼上 CHANGELOG 該版本的內容（不含 `## [x.y.z]` 那行標題），再加一行 SHA256；附上 zip。舊版使用者按「檢查更新」時，程式會把這段內文顯示成「版本紀錄」最上面的「新版 x.y.z（尚未安裝）」，所以內文就是他們看到的更新內容，請寫給使用者看。
-3. **不要勾「Set as a pre-release」**，要勾「Set as the latest release」。檢查更新用的是 `releases/latest`，這個 API 看不到 pre-release。
-4. 發佈後，用舊版程式按「檢查更新」，確認會提示新版；新版自己按則應該顯示「目前已是最新版本」。
+2. GitHub → Releases → Draft a new release：選剛才的 tag，標題 `vx.y.z`，內文貼上 CHANGELOG 該版本的內容（不含 `## [x.y.z]` 那行標題），再加一行 SHA256；附上 zip。
+3. **不要勾「Set as a pre-release」**，要勾「Set as the latest release」。
+
+不管哪一種：舊版使用者按「檢查更新」時，程式會把 Release 內文顯示成「版本紀錄」最上面的「新版 x.y.z（尚未安裝）」，所以內文就是他們看到的更新內容，請寫給使用者看。檢查更新用的是 `releases/latest`，這個 API 看不到 pre-release，所以**不能標成 pre-release**。
+
+發佈後，用舊版程式按「檢查更新」，確認會提示新版；新版自己按則應該顯示「目前已是最新版本」。
+
+發佈後也順手確認 Release 的 zip 下載下來的 SHA256 跟內文寫的一致（`gh release download` 或網頁下載後用 `Get-FileHash`）。
 
 ## 注意
 

@@ -10,6 +10,7 @@
 
 其他檔案：
 
+- [DEVELOPMENT.md](DEVELOPMENT.md)：開發筆記（建置、測試、專案結構、設計原則、已知問題）。這份是給開發者看的，不是網站的一部分。
 - `style.css`、`logo.png`、`logo-512.png`：網頁的樣式與標誌（Google OAuth 同意畫面也用這個標誌）。
 - `google62f77dbe22483701.html`：Google Search Console 的網域驗證檔，**不要刪**，刪了 Google 會認為網域不再屬於你。`index.html` 裡的 `google-site-verification` 標籤也是同樣的用途。
 
