@@ -1008,7 +1008,7 @@ namespace CalendarWidget
                 _settingsWindow = null;
                 TrimMemory();
             };
-            _settingsWindow.CheckUpdate = CheckForUpdates;
+            _settingsWindow.CheckUpdate = CheckForUpdates;   // 帶回呼的那一版：結果顯示在「關於」頁裡
             _settingsWindow.SelectTab(tab);
             _settingsWindow.Show();
             WindowHelper.BringToFront(_settingsWindow);
@@ -1288,10 +1288,19 @@ namespace CalendarWidget
 
         private bool _checkingUpdate;
         private ReminderWindow _updateWindow;
+        private readonly List<Action<UpdateResult>> _updateWaiters = new List<Action<UpdateResult>>();   // null = 用右下角提醒框顯示
 
-        // 系統匣選單與「關於」分頁的「檢查更新」。只有使用者按了才會連線；結果用右下角的提醒框顯示
+        // 系統匣選單的「檢查更新」：只有使用者按了才會連線；結果用右下角的提醒框顯示
         internal void CheckForUpdates()
         {
+            CheckForUpdates(null);
+        }
+
+        // 「關於」分頁的「檢查更新」：結果交給 onResult，由那一頁直接顯示（使用者正在看那一頁，不要再跳提醒框）。
+        // 同時有人在查就共用同一次連線
+        internal void CheckForUpdates(Action<UpdateResult> onResult)
+        {
+            _updateWaiters.Add(onResult);
             if (_checkingUpdate) return;
             _checkingUpdate = true;
             System.Threading.Tasks.Task.Run(() => UpdateChecker.Check(AppInfo.Version)).ContinueWith(task =>
@@ -1299,7 +1308,16 @@ namespace CalendarWidget
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     _checkingUpdate = false;
-                    ShowUpdateResult(task.IsFaulted ? new UpdateResult { Status = UpdateStatus.Failed, Message = "檢查更新時發生錯誤。" } : task.Result);
+                    UpdateResult result = task.IsFaulted ? new UpdateResult { Status = UpdateStatus.Failed, Message = "檢查更新時發生錯誤。" } : task.Result;
+                    var waiters = _updateWaiters.ToArray();
+                    _updateWaiters.Clear();
+                    bool popup = false;
+                    foreach (var waiter in waiters)
+                    {
+                        if (waiter == null) popup = true;
+                        else waiter(result);
+                    }
+                    if (popup) ShowUpdateResult(result);
                 }));
             });
         }

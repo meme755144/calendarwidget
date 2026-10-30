@@ -107,6 +107,18 @@ static class P
             small[0].Lines[0].Kind == ChangelogLineKind.Section && small[0].Lines[1].Kind == ChangelogLineKind.Bullet && small[0].Lines[2].Kind == ChangelogLineKind.Text && small[1].Lines[0].Text == "b");
         Check("changelog: empty input -> no entries", Changelog.Parse("").Count == 0 && Changelog.Parse(null).Count == 0);
 
+        // 新版的內容來自 GitHub Release 的內文（網路來的文字）
+        var rn = Changelog.ParseNotes("## 新功能\r\n- 修正**月曆**顯示\r\n- 新增 `設定` 項目\r\n\r\nSHA256: abc\r\n#### 已知限制\r\n* 沒有簽章", "新版 0.9.1（尚未安裝）", 60);
+        Check("notes: heading kept, any #-level is a section, bullets recognised, markers stripped",
+            rn.Heading == "新版 0.9.1（尚未安裝）" && rn.Lines.Count == 6 &&
+            rn.Lines[0].Kind == ChangelogLineKind.Section && rn.Lines[0].Text == "新功能" &&
+            rn.Lines[1].Kind == ChangelogLineKind.Bullet && rn.Lines[1].Text == "修正月曆顯示" && rn.Lines[2].Text == "新增 設定 項目" &&
+            rn.Lines[3].Kind == ChangelogLineKind.Text && rn.Lines[4].Kind == ChangelogLineKind.Section && rn.Lines[4].Text == "已知限制" && rn.Lines[5].Kind == ChangelogLineKind.Bullet,
+            string.Join("|", rn.Lines.Select(l => l.Kind + ":" + l.Text)));
+        var longNotes = Changelog.ParseNotes(string.Join("\n", Enumerable.Range(0, 200).Select(i => "- " + new string('字', 500))), "x", 60);
+        Check("notes: line count capped at 60, long lines cut", longNotes.Lines.Count == 60 && longNotes.Lines[0].Text.Length == 301, longNotes.Lines.Count + " / " + longNotes.Lines[0].Text.Length);
+        Check("notes: empty / null / only symbols -> no lines, no exception", Changelog.ParseNotes("", "x", 60).Lines.Count == 0 && Changelog.ParseNotes(null, "x", 60).Lines.Count == 0 && Changelog.ParseNotes("###\n**\n", "x", 60).Lines.Count == 0);
+
         // ===== 發版時最容易漏的：csproj 的版本號要等於 CHANGELOG 最上面那一筆 =====
         string csproj = File.ReadAllText(Path.Combine(root, "src", "CalendarWidget", "CalendarWidget.csproj"), Encoding.UTF8);
         Match m = Regex.Match(csproj, @"<Version>([^<]+)</Version>");

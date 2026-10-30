@@ -44,20 +44,44 @@ namespace CalendarWidget
                 {
                     continue;   // 第一個版本之前的說明
                 }
-                else if (line.StartsWith("### "))
-                {
-                    current.Lines.Add(new ChangelogLine { Kind = ChangelogLineKind.Section, Text = line.Substring(4).Trim() });
-                }
-                else if (line.StartsWith("- ") || line.StartsWith("* "))
-                {
-                    current.Lines.Add(new ChangelogLine { Kind = ChangelogLineKind.Bullet, Text = line.Substring(2).Trim() });
-                }
                 else
                 {
-                    current.Lines.Add(new ChangelogLine { Kind = ChangelogLineKind.Text, Text = line });
+                    current.Lines.Add(ClassifyLine(line));
                 }
             }
             return entries;
+        }
+
+        // GitHub Release 的內文（Markdown，沒有版本標題）→ 一版的內容。這段文字來自網路，只當純文字顯示，
+        // 而且限制行數與每行長度，避免超長的內容把畫面撐爆。任何層級的「#」標題都當小標題
+        public static ChangelogEntry ParseNotes(string notes, string heading, int maxLines)
+        {
+            var entry = new ChangelogEntry { Heading = heading };
+            if (string.IsNullOrEmpty(notes)) return entry;
+            foreach (string raw in notes.Replace("\r\n", "\n").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0) continue;
+                ChangelogLine parsed = line.StartsWith("#") ? new ChangelogLine { Kind = ChangelogLineKind.Section, Text = Clean(line.TrimStart('#')) } : ClassifyLine(line);
+                if (parsed.Text.Length == 0) continue;
+                if (parsed.Text.Length > 300) parsed.Text = parsed.Text.Substring(0, 300) + "…";
+                entry.Lines.Add(parsed);
+                if (entry.Lines.Count >= maxLines) break;
+            }
+            return entry;
+        }
+
+        private static ChangelogLine ClassifyLine(string line)
+        {
+            if (line.StartsWith("### ")) return new ChangelogLine { Kind = ChangelogLineKind.Section, Text = Clean(line.Substring(4)) };
+            if (line.StartsWith("- ") || line.StartsWith("* ")) return new ChangelogLine { Kind = ChangelogLineKind.Bullet, Text = Clean(line.Substring(2)) };
+            return new ChangelogLine { Kind = ChangelogLineKind.Text, Text = Clean(line) };
+        }
+
+        // 畫面上不顯示 Markdown 的粗體與程式碼符號
+        private static string Clean(string text)
+        {
+            return text.Replace("**", "").Replace("`", "").Trim();
         }
 
         // 「[0.9.0] - 2026-10-30」→「0.9.0（2026-10-30）」；格式不符就原樣顯示

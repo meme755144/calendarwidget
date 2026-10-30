@@ -29,7 +29,7 @@
 ## 在 GitHub 發佈
 
 1. 打 tag 並 push：`git tag vx.y.z` → `git push origin vx.y.z`。
-2. GitHub → Releases → Draft a new release：選剛才的 tag，標題 `vx.y.z`，內文貼上 CHANGELOG 該版本的內容，再加一行 SHA256；附上 zip。
+2. GitHub → Releases → Draft a new release：選剛才的 tag，標題 `vx.y.z`，內文貼上 CHANGELOG 該版本的內容（不含 `## [x.y.z]` 那行標題），再加一行 SHA256；附上 zip。舊版使用者按「檢查更新」時，程式會把這段內文顯示成「版本紀錄」最上面的「新版 x.y.z（尚未安裝）」，所以內文就是他們看到的更新內容，請寫給使用者看。
 3. **不要勾「Set as a pre-release」**，要勾「Set as the latest release」。檢查更新用的是 `releases/latest`，這個 API 看不到 pre-release。
 4. 發佈後，用舊版程式按「檢查更新」，確認會提示新版；新版自己按則應該顯示「目前已是最新版本」。
 
