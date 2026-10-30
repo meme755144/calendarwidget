@@ -135,6 +135,15 @@ namespace CalendarWidget
             LockBox.IsChecked = _settings.LockPosition;
             MarkOffDaysBox.IsChecked = _settings.MarkOffDays;
 
+            foreach (var s in WidthScales) WidthScaleBox.Items.Add(s.Key);
+            int wi = Array.FindIndex(WidthScales, s => Math.Abs(s.Value - _settings.WidthScale) < 0.005);
+            if (wi < 0)
+            {
+                WidthScaleBox.Items.Add("自訂（" + Math.Round(_settings.WidthScale * 100) + "%）");
+                wi = WidthScaleBox.Items.Count - 1;
+            }
+            WidthScaleBox.SelectedIndex = wi;
+
             foreach (var s in DetailScales) DetailScaleBox.Items.Add(s.Key);
             int di = Array.FindIndex(DetailScales, s => Math.Abs(s.Value - _settings.DetailScale) < 0.005);
             if (di < 0)
@@ -155,6 +164,21 @@ namespace CalendarWidget
 
             FillMonths(LoadPastBox, PastChoices, _settings.LoadPastMonths);
             FillMonths(LoadFutureBox, FutureChoices, _settings.LoadFutureMonths);
+        }
+
+        private static readonly KeyValuePair<string, double>[] WidthScales =
+        {
+            new KeyValuePair<string, double>("標準（最窄）", 1.0),
+            new KeyValuePair<string, double>("稍寬（115%）", 1.15),
+            new KeyValuePair<string, double>("寬（130%）", 1.3),
+            new KeyValuePair<string, double>("更寬（150%）", 1.5),
+            new KeyValuePair<string, double>("最寬（175%）", 1.75)
+        };
+
+        private double SelectedWidthScale()
+        {
+            int i = WidthScaleBox.SelectedIndex;
+            return i >= 0 && i < WidthScales.Length ? WidthScales[i].Value : _settings.WidthScale;
         }
 
         private static readonly KeyValuePair<string, double>[] DetailScales =
@@ -501,6 +525,7 @@ namespace CalendarWidget
             if (localEventRow != null) _settings.LocalEventColor = localEventRow.Color;
             _settings.Scale = SelectedScale();
             _settings.DetailScale = SelectedDetailScale();
+            _settings.WidthScale = SelectedWidthScale();
             _settings.DotScale = SelectedDotScale();
             int oldPast = _settings.LoadPastMonths, oldFuture = _settings.LoadFutureMonths;
             _settings.LoadPastMonths = SelectedMonths(LoadPastBox, oldPast);

@@ -124,7 +124,7 @@ namespace CalendarWidget
                 string text = "ClientId=" + Clean(storedId) + "\nClientSecret=" + Clean(storedSecret) +
                               "\nRefreshToken=" + Clean(RefreshToken) + "\nEmail=" + Clean(Email) + "\nScopes=" + Clean(Scopes) + "\n";
                 byte[] cipher = ProtectedData.Protect(Encoding.UTF8.GetBytes(text), Entropy, DataProtectionScope.CurrentUser);
-                File.WriteAllText(FilePath, Convert.ToBase64String(cipher));
+                AtomicFile.WriteAllText(FilePath, Convert.ToBase64String(cipher), new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -207,13 +207,13 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                File.WriteAllLines(IniFile, new[]
+                AtomicFile.WriteAllLines(IniFile, new[]
                 {
                     "ShowTasks=" + (ShowTasks ? "1" : "0"),
                     "TasksColor=" + TasksColor,
                     "IntervalMinutes=" + IntervalMinutes.ToString(CultureInfo.InvariantCulture)
                 }, new UTF8Encoding(false));
-                File.WriteAllLines(CalendarsFile, Calendars.Select(e =>
+                AtomicFile.WriteAllLines(CalendarsFile, Calendars.Select(e =>
                     e.Id + "\t" + (e.Enabled ? "1" : "0") + "\t" + (e.Kind == ItemKind.Holiday ? "H" : "E") + "\t" + e.Color + "\t" +
                     (e.Name ?? "").Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim() + "\t" +
                     (e.CanWrite == 1 ? "1" : e.CanWrite == 0 ? "0" : "?")), new UTF8Encoding(false));

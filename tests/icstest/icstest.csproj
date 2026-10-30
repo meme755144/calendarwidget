@@ -7,5 +7,6 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Calendars\Ics.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\Models.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\src\CalendarWidget\Core\AtomicFile.cs" />
   </ItemGroup>
 </Project>

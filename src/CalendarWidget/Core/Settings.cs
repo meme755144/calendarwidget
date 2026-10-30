@@ -24,6 +24,7 @@ namespace CalendarWidget
         public bool LockPosition;                    // 鎖定位置，不能用滑鼠拖動
         public double DotScale = 1.0;                // 月曆下方清單前面的圓點大小（日曆格子裡的圓點不受影響）
         public double DetailScale = 1.0;             // 月曆下方「選取日期的行程與待辦」的文字大小（只調這一塊）
+        public double WidthScale = 1.0;              // 月曆的寬度（只加寬日期格子與下方清單，文字大小不變）；1.0 是最窄，再窄上方的年月標題會擠不下
         public int LoadPastMonths = 6;               // 外部日曆（Google、ICS）載入今天往前幾個月
         public int LoadFutureMonths = 12;            // 往後幾個月
         public bool MarkOffDays = true;              // 平日的放假（補假、連假）也標紅字；要連網下載行政院的辦公日曆表
@@ -33,6 +34,7 @@ namespace CalendarWidget
         public const int EventReminderPerEvent = 0;  // 依各行程自己的設定（Google 的提醒、ICS 檔案裡的提醒）
         public const int EventReminderCustom = 1;    // 使用者自訂：所有有時間的行程，開始前固定幾分鐘
         public const int EventReminderOff = 2;       // 不提醒
+        public const int MaxEventReminderMinutes = 40320;   // 提醒最多提前 28 天（自訂提醒與 ICS 檔裡的提醒都以此為上限）
 
         public int EventReminderMode = EventReminderPerEvent;
         public int EventReminderMinutes = 10;        // 自訂模式用：開始前幾分鐘
@@ -72,12 +74,13 @@ namespace CalendarWidget
                     else if (key == "LocalEventColor" && Colors.IsValidHex(val)) s.LocalEventColor = val;
                     else if (key == "LastAddCalendar") s.LastAddCalendar = val;
                     else if (key == "EventReminderMode" && isNumber && v >= 0 && v <= 2) s.EventReminderMode = (int)v;
-                    else if (key == "EventReminderMinutes" && isNumber && v >= 0 && v <= 40320) s.EventReminderMinutes = (int)v;
+                    else if (key == "EventReminderMinutes" && isNumber && v >= 0 && v <= MaxEventReminderMinutes) s.EventReminderMinutes = (int)v;
                     else if (key == "WeekStartsOnMonday") s.WeekStartsOnMonday = val == "1";
                     else if (key == "LockPosition") s.LockPosition = val == "1";
                     else if (key == "Scale" && isNumber) s.Scale = ClampScale(v);
                     else if (key == "DotScale" && isNumber) s.DotScale = ClampDotScale(v);
                     else if (key == "DetailScale" && isNumber) s.DetailScale = ClampDetailScale(v);
+                    else if (key == "WidthScale" && isNumber) s.WidthScale = ClampWidthScale(v);
                     else if (key == "LoadPastMonths" && isNumber && v >= 1 && v <= 60) s.LoadPastMonths = (int)v;
                     else if (key == "LoadFutureMonths" && isNumber && v >= 1 && v <= 60) s.LoadFutureMonths = (int)v;
                     else if (key == "MarkOffDays") s.MarkOffDays = val != "0";
@@ -113,6 +116,12 @@ namespace CalendarWidget
             return Math.Max(0.8, Math.Min(2.0, v));
         }
 
+        public static double ClampWidthScale(double v)
+        {
+            if (double.IsNaN(v)) return 1.0;
+            return Math.Max(1.0, Math.Min(2.0, v));
+        }
+
         public static double ClampOpacity(double v)
         {
             if (double.IsNaN(v)) return 1.0;
@@ -125,7 +134,7 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                File.WriteAllLines(FilePath, new[]
+                AtomicFile.WriteAllLines(FilePath, new[]
                 {
                     "Left=" + Left.ToString("R", CultureInfo.InvariantCulture),
                     "Top=" + Top.ToString("R", CultureInfo.InvariantCulture),
@@ -141,6 +150,7 @@ namespace CalendarWidget
                     "Scale=" + Scale.ToString("R", CultureInfo.InvariantCulture),
                     "DotScale=" + DotScale.ToString("R", CultureInfo.InvariantCulture),
                     "DetailScale=" + DetailScale.ToString("R", CultureInfo.InvariantCulture),
+                    "WidthScale=" + WidthScale.ToString("R", CultureInfo.InvariantCulture),
                     "LoadPastMonths=" + LoadPastMonths.ToString(CultureInfo.InvariantCulture),
                     "LoadFutureMonths=" + LoadFutureMonths.ToString(CultureInfo.InvariantCulture),
                     "MarkOffDays=" + (MarkOffDays ? "1" : "0"),
@@ -151,7 +161,7 @@ namespace CalendarWidget
                     "ReminderIntervalMinutes=" + ReminderIntervalMinutes.ToString(CultureInfo.InvariantCulture),
                     "ReminderStartHour=" + ReminderStartHour.ToString(CultureInfo.InvariantCulture),
                     "ReminderEndHour=" + ReminderEndHour.ToString(CultureInfo.InvariantCulture)
-                });
+                }, new System.Text.UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

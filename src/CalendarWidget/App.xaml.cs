@@ -28,6 +28,10 @@ namespace CalendarWidget
                 return;
             }
 
+            // 常駐的小工具不能因為某個回呼丟了例外就整個消失（系統匣圖示會留下殘影、使用者的提醒也全沒了）：
+            // 記到錯誤記錄檔，程式繼續跑
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+
             // 透明視窗本來就走軟體繪製；明確指定可避免載入 GPU 驅動相關模組
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
@@ -110,6 +114,7 @@ namespace CalendarWidget
             // 開發檢查畫面用：--check-update 啟動後立刻做一次「檢查更新」（網址可用 CALENDARWIDGET_UPDATE_URL 換成假伺服器）
             if (Array.IndexOf(e.Args, "--check-update") >= 0) window.CheckForUpdates();
             if (Array.IndexOf(e.Args, "--typhoon-expand") >= 0) window.ExpandTyphoonForTest();
+            if (Array.IndexOf(e.Args, "--show-widget") >= 0) window.Dispatcher.BeginInvoke(new Action(window.ShowWidget), System.Windows.Threading.DispatcherPriority.ApplicationIdle);   // 開發檢查畫面用：啟動後把月曆叫到最前面
             if (Array.IndexOf(e.Args, "--settings-end") >= 0) window.ScrollSettingsForTest();
             if (Array.IndexOf(e.Args, "--maker-preview") >= 0) window.MakerPreviewForTest();
             foreach (string arg in e.Args)
@@ -120,6 +125,12 @@ namespace CalendarWidget
                 int dragFrom, dragTo;
                 if (parts.Length == 2 && int.TryParse(parts[0], out dragFrom) && int.TryParse(parts[1], out dragTo)) window.DragCalendarForTest(dragFrom, dragTo);
             }
+        }
+
+        private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            ErrorLog.Write(e.Exception);
+            e.Handled = true;
         }
 
         protected override void OnExit(ExitEventArgs e)

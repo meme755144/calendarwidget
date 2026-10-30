@@ -67,6 +67,7 @@ namespace CalendarWidget
                 if (!order.ContainsKey(id)) order[id] = i++;
             }
             _order = order;
+            Rebuild();   // 每天的清單是排好再存的，順序變了就要重排
         }
 
         private int Rank(CalendarItem item)
@@ -95,15 +96,20 @@ namespace CalendarWidget
                 }
                 day.Add(item);
             }
+
+            // 排序只在資料變動時做一次（每天一份排好的清單）；月曆每格、提示、提醒都會一直呼叫 For，不能每次都重排
+            foreach (var key in index.Keys.ToList())
+                index[key] = index[key].OrderBy(Rank).ThenBy(i => i.TimeText ?? "").ThenBy(i => i.Title).ToList();
             _byDate = index;
         }
 
-        // 同一天的項目：先依日曆順序，同一個日曆內整天事件在前，再依時間、標題
+        // 同一天的項目：先依日曆順序，同一個日曆內整天事件在前，再依時間、標題。
+        // 回傳的是唯讀的檢視，呼叫端不能改到裡面的順序
         public IList<CalendarItem> For(DateTime date)
         {
             List<CalendarItem> list;
             if (!_byDate.TryGetValue(date.Date, out list)) return None;
-            return list.OrderBy(Rank).ThenBy(i => i.TimeText ?? "").ThenBy(i => i.Title).ToList();
+            return list.AsReadOnly();
         }
 
         public void RemoveSource(string name)

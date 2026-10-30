@@ -27,7 +27,7 @@ http.createServer((req, res) => {
   count++;
   fs.appendFileSync(logFile, `${new Date().toISOString()} ${req.method} ${req.url} ua=${req.headers['user-agent']}\n`);
   if (req.url.startsWith('/range')) {
-    const m = (months) => { const x = new Date(); x.setMonth(x.getMonth() + months); const p = (n) => String(n).padStart(2, '0'); return `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}`; };
+    const m = (months) => { const x = new Date(); const day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + months); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); const p = (n) => String(n).padStart(2, '0'); return `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}`; };
     const ev = (uid, day, title) => ['BEGIN:VEVENT', `UID:${uid}`, `DTSTART;VALUE=DATE:${day}`, `SUMMARY:${title}`, 'END:VEVENT'];
     const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//test//EN', ...ev('r1', m(-4), 'old'), ...ev('r2', d(10), 'near'), ...ev('r3', m(14), 'far'), 'END:VCALENDAR', ''].join('\r\n');
     res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8' });

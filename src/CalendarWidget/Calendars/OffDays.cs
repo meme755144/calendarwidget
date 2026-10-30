@@ -19,6 +19,7 @@ namespace CalendarWidget
         private readonly Dictionary<int, DateTime> _fetchedAt = new Dictionary<int, DateTime>();   // 快取的下載時間（UTC）
         private readonly Dictionary<int, DateTime> _failedAt = new Dictionary<int, DateTime>();    // 最近一次下載失敗的時間（UTC）
         private readonly HashSet<int> _busy = new HashSet<int>();
+        private readonly HashSet<int> _cacheTried = new HashSet<int>();   // 已經試著讀過快取的年度
 
         // 關掉的話不讀、不下載，只算週六日
         public bool Enabled = true;
@@ -46,7 +47,8 @@ namespace CalendarWidget
         {
             lock (_lock)
             {
-                if (!_years.ContainsKey(year)) LoadCache(year);
+                // 每個年度的快取只讀一次：讀不到（損毀、不存在）時，離線翻月曆不能每翻一格就重讀、重解析一次
+                if (!_years.ContainsKey(year) && _cacheTried.Add(year)) LoadCache(year);
 
                 bool have = _years.ContainsKey(year);
                 bool stale = !have || (year >= today.Year && DateTime.UtcNow - _fetchedAt[year] > RefreshAfter);   // 過去的年度不會再改，快取一直有效
@@ -120,10 +122,7 @@ namespace CalendarWidget
             {
                 string path = CachePath(year);
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                string temp = path + ".tmp";
-                File.WriteAllText(temp, text, new UTF8Encoding(false));
-                if (File.Exists(path)) File.Delete(path);
-                File.Move(temp, path);
+                AtomicFile.WriteAllText(path, text, new UTF8Encoding(false));
             }
             catch (IOException) { }   // 存不下來也沒關係，這次的資料還是會用，只是下次要重抓
             catch (UnauthorizedAccessException) { }

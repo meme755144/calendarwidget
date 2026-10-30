@@ -128,6 +128,49 @@ static class P
         Check("trigger parse -PT1H30M = 90", IcsParser.ParseTriggerMinutes("-PT1H30M") == 90);
         Check("trigger parse garbage = null", IcsParser.ParseTriggerMinutes("hello") == null && IcsParser.ParseTriggerMinutes("-P") == null && IcsParser.ParseTriggerMinutes("") == null);
 
+        // ===== 壞資料不能讓程式出事（ICS 可能來自任何網址）=====
+        Check("trigger: absurd sizes, full-width digits and huge numbers are ignored (no exception)",
+            IcsParser.ParseTriggerMinutes("-P1000000D") == null && IcsParser.ParseTriggerMinutes("-PT１５M") == null && IcsParser.ParseTriggerMinutes("-P99999999999D") == null &&
+            IcsParser.ParseTriggerMinutes("-P" + new string('9', 400) + "D") == null);
+        Check("trigger: 28 days is the largest accepted", IcsParser.ParseTriggerMinutes("-P28D") == 40320 && IcsParser.ParseTriggerMinutes("-P29D") == null);
+
+        r = Run("BEGIN:VEVENT\r\nUID:bad1\r\nDTSTART;VALUE=DATE:20260105\r\nRRULE:FREQ=YEARLY;INTERVAL=9000\r\nSUMMARY:怪規則\r\nEND:VEVENT\r\n" +
+                "BEGIN:VEVENT\r\nUID:bad2\r\nDTSTART;VALUE=DATE:20260107\r\nRRULE:FREQ=DAILY;INTERVAL=2000000000;COUNT=3\r\nSUMMARY:怪間隔\r\nEND:VEVENT\r\n" +
+                "BEGIN:VEVENT\r\nUID:bad3\r\nDTSTART;VALUE=DATE:20260108\r\nRRULE:FREQ=WEEKLY;UNTIL=99991231\r\nSUMMARY:無限期\r\nEND:VEVENT\r\n" +
+                "BEGIN:VEVENT\r\nUID:bad4\r\nDTSTART:20260109T090000Z\r\nSUMMARY:壞提醒\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-P1000000D\r\nEND:VALARM\r\nEND:VEVENT\r\n" +
+                "BEGIN:VEVENT\r\nUID:ok1\r\nDTSTART;VALUE=DATE:20260106\r\nSUMMARY:正常\r\nEND:VEVENT\r\n");
+        Check("odd rules / huge intervals / absurd alarms: the normal event is still there and nothing throws",
+            r.Any(i => i.Title == "正常") && r.Any(i => i.Title == "怪規則") && r.Count(i => i.Title == "無限期") > 50 && r.Any(i => i.Title == "壞提醒" && i.Reminders == null), string.Join(",", r.Select(i => i.Title).Distinct()));
+
+        // 一個很長的屬性被折成幾萬行（例如內嵌的附件）：不能越接越慢
+        var fold = new System.Text.StringBuilder("BEGIN:VEVENT\r\nUID:fold\r\nDTSTART;VALUE=DATE:20260110\r\nSUMMARY:折行\r\nDESCRIPTION:");
+        for (int k = 0; k < 20000; k++) fold.Append("\r\n ").Append('x', 70);
+        fold.Append("\r\nEND:VEVENT\r\n");
+        var foldClock = System.Diagnostics.Stopwatch.StartNew();
+        r = Run(fold.ToString());
+        Check("a property folded into 20000 lines parses quickly", r.Count == 1 && r[0].Title == "折行" && foldClock.ElapsedMilliseconds < 3000, foldClock.ElapsedMilliseconds + " ms");
+
+        // 跨好幾十年的整天事件：只產生落在範圍內的那幾天，而且很快
+        var spanClock = System.Diagnostics.Stopwatch.StartNew();
+        r = Run("BEGIN:VEVENT\r\nUID:span\r\nDTSTART;VALUE=DATE:20000101\r\nDTEND;VALUE=DATE:29990101\r\nSUMMARY:合約期間\r\nEND:VEVENT\r\n", "2026-03-01", "2026-03-31");
+        Check("a multi-decade all-day event only yields the days inside the range", r.Count == 31 && D(r.OrderBy(i => i.Date).First()) == "2026-03-01" && spanClock.ElapsedMilliseconds < 1000, r.Count + " items, " + spanClock.ElapsedMilliseconds + " ms");
+
+        // IANA 時區名稱對照：表裡每一個都要真的找得到 Windows 時區（打錯字會悄悄變成電腦的時區）
+        var missingZones = IcsParser.KnownZoneIds.Where(z => IcsParser.FindZone(z) == null).ToList();
+        Check("every mapped time zone exists on this Windows", missingZones.Count == 0, string.Join(",", missingZones));
+        r = Run("BEGIN:VEVENT\r\nUID:tz\r\nDTSTART;TZID=America/Toronto:20261105T090000\r\nSUMMARY:多倫多\r\nEND:VEVENT\r\n");
+        DateTime toronto = TimeZoneInfo.ConvertTime(new DateTime(2026, 11, 5, 9, 0, 0), TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"), local);
+        Check("a zone that used to be unknown (America/Toronto) is now converted", r.Count == 1 && r[0].TimeText == toronto.ToString("HH:mm"), r.Count > 0 ? r[0].TimeText : "none");
+
+        // 多個背景工作同時第一次查同一個時區：不能壞掉（字典不是執行緒安全的）
+        var zoneTasks = Enumerable.Range(0, 16).Select(n => System.Threading.Tasks.Task.Run(() =>
+        {
+            foreach (string z in IcsParser.KnownZoneIds) IcsParser.FindZone(z + (n % 2 == 0 ? "" : "/x"));
+        })).ToArray();
+        bool zonesOk;
+        try { zonesOk = System.Threading.Tasks.Task.WaitAll(zoneTasks, 20000); } catch (AggregateException) { zonesOk = false; }
+        Check("looking up time zones from many threads at once works", zonesOk);
+
         bool noThrow = true;
         try { Run("garbage\r\nBEGIN:VEVENT\r\nDTSTART:not-a-date\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:no start\r\nEND:VEVENT\r\n"); } catch (Exception) { noThrow = false; }
         Check("malformed input does not throw", noThrow);

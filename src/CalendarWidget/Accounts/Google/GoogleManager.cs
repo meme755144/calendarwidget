@@ -30,6 +30,8 @@ namespace CalendarWidget
         private string _error;
         private bool _needsSignIn;
         private bool _fetching;
+        private bool _refetchRequested;       // 抓的期間又有變動（新增、刪除、改設定）：這一輪結束後再抓一次
+        private volatile int _generation;     // 每次中斷連接加一；還在跑的抓取發現世代變了，結果就整批丟掉
         private bool _connecting;
         private bool _adding;
 
@@ -163,7 +165,7 @@ namespace CalendarWidget
 
         public void Connect()
         {
-            if (_connecting) return;
+            if (_connecting || _adding) return;   // 正在等寫入授權時再開一個登入，兩個流程會互相蓋掉對方的狀態
             if (!_auth.HasCredentials)
             {
                 _error = "請先填入用戶端 ID 和用戶端密鑰";
@@ -178,10 +180,12 @@ namespace CalendarWidget
             Task.Run(() =>
             {
                 string error = null, email = null;
+                bool authorized = false;
                 List<GoogleCalendarEntry> calendars = null;
                 try
                 {
                     _auth.Authorize(TimeSpan.FromMinutes(3));
+                    authorized = true;
                     calendars = _client.ListCalendars(out email);
                 }
                 catch (GoogleException ex) { error = ex.Message; }
@@ -190,10 +194,13 @@ namespace CalendarWidget
                 _ui.BeginInvoke(new Action(delegate
                 {
                     _connecting = false;
+                    // 授權成功就代表新的登入憑證已經存好了；接下來抓日曆清單失敗，也不能繼續顯示「登入已失效」
+                    if (authorized) _needsSignIn = false;
                     if (error != null)
                     {
                         _error = error;
                         RaiseStatusChanged();
+                        if (authorized) { _retryAfter = DateTime.Now + RetryDelay; ScheduleNext(); }
                         return;
                     }
 
@@ -397,6 +404,8 @@ namespace CalendarWidget
 
         public void Disconnect()
         {
+            _generation++;   // 還在跑的抓取與還沒存的快取，結果都作廢
+            _refetchRequested = false;
             _auth.SignOut();
             foreach (string key in _items.Keys.ToList()) RemoveItems(key);
             _config.Calendars.Clear();
@@ -504,10 +513,17 @@ namespace CalendarWidget
 
         private void Fetch()
         {
-            if (!_auth.IsSignedIn || _fetching) return;
+            if (!_auth.IsSignedIn) return;
+            if (_fetching)
+            {
+                // 正在抓的是「變動之前」的資料：新增、刪除、改設定之後要的是新的，這一輪結束後再抓一次，不然剛刪掉的行程會又被舊結果蓋回來
+                _refetchRequested = true;
+                return;
+            }
             _fetching = true;
             RaiseStatusChanged();
 
+            int generation = _generation;
             var cfg = _config.Clone();
             Task.Run(() =>
             {
@@ -531,15 +547,23 @@ namespace CalendarWidget
                     catch (Exception ex) { errors.Add("Google 待辦：" + GoogleHttp.Describe(ex)); }
                 }
 
-                foreach (var pair in results) SaveCache(pair.Key, pair.Value);
-
-                _ui.BeginInvoke(new Action(delegate { ApplyFetch(results, errors, needsSignIn); }));
+                _ui.BeginInvoke(new Action(delegate { ApplyFetch(results, errors, needsSignIn, generation); }));
             });
         }
 
-        private void ApplyFetch(Dictionary<string, List<CalendarItem>> results, List<string> errors, bool needsSignIn)
+        private void ApplyFetch(Dictionary<string, List<CalendarItem>> results, List<string> errors, bool needsSignIn, int generation)
         {
             _fetching = false;
+
+            // 抓的期間中斷連接了：結果整批丟掉（包含不能把快取寫回磁碟，隱私權政策承諾中斷連接會刪除本機的行程快取）
+            if (generation != _generation)
+            {
+                _refetchRequested = false;
+                RaiseStatusChanged();
+                if (_auth.IsSignedIn) Fetch();   // 中斷後又重新連接了：用新的帳號重抓
+                return;
+            }
+
             var wanted = new HashSet<string>(WantedKeys());
 
             foreach (var pair in results)
@@ -550,6 +574,11 @@ namespace CalendarWidget
                 ApplyCurrentStyle(pair.Key, pair.Value);
                 _items[pair.Key] = pair.Value;
                 _store.SetSource(StoreKey(pair.Key), pair.Value);
+
+                // 確認這份結果會被採用之後才存快取（在背景存；存之前再確認一次沒有被中斷連接）
+                string cacheKey = pair.Key;
+                List<CalendarItem> cacheItems = pair.Value;
+                Task.Run(() => { if (generation == _generation) SaveCache(cacheKey, cacheItems); });
             }
 
             _needsSignIn = needsSignIn;
@@ -569,8 +598,10 @@ namespace CalendarWidget
             RaiseChanged();
             RaiseStatusChanged();
 
-            // 抓的期間又勾選了新的日曆：補抓一次
-            if (errors.Count == 0 && wanted.Any(k => !_items.ContainsKey(k))) Fetch();
+            // 抓的期間又勾選了新的日曆、或有新增／刪除行程：補抓一次
+            bool refetch = _refetchRequested;
+            _refetchRequested = false;
+            if (refetch || (errors.Count == 0 && wanted.Any(k => !_items.ContainsKey(k)))) Fetch();
             ScheduleNext();
         }
 

@@ -77,10 +77,7 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                string temp = FilePath + ".tmp";
-                File.WriteAllLines(temp, _keys.OrderBy(k => k), new UTF8Encoding(false));
-                if (File.Exists(FilePath)) File.Delete(FilePath);
-                File.Move(temp, FilePath);
+                AtomicFile.WriteAllLines(FilePath, _keys.OrderBy(k => k), new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

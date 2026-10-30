@@ -72,7 +72,8 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="DetailTitle" Grid.Column="0" FontSize="13" FontWeight="SemiBold" Foreground="#F5F5FF" VerticalAlignment="Center" />
+                            <TextBlock x:Name="DetailTitle" Grid.Column="0" FontSize="13" FontWeight="SemiBold" Foreground="#F5F5FF" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,0,8,0" HorizontalAlignment="Left" />
                             <TextBlock x:Name="CollapseGlyph" Grid.Column="1" Text="▴" FontSize="13" Foreground="#9A9AB4" VerticalAlignment="Center" />
                         </Grid>
                     </Border>

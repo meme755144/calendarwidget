@@ -106,6 +106,15 @@
 
                                 <Grid Style="{StaticResource SettingRow}">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="月曆寬度" Style="{StaticResource RowLabel}" />
+                                    <StackPanel Grid.Column="1">
+                                        <ComboBox x:Name="WidthScaleBox" Width="170" HorizontalAlignment="Left" />
+                                        <TextBlock Text="只加寬日期格子和下方清單，文字大小不變。標題或行程名稱比較長時，加寬可以多顯示一些字。最窄就是「標準」（再窄上面的年月標題會擠不下）。" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="下方清單文字大小" Style="{StaticResource RowLabel}" />
                                     <StackPanel Grid.Column="1">
                                         <ComboBox x:Name="DetailScaleBox" Width="170" HorizontalAlignment="Left" />

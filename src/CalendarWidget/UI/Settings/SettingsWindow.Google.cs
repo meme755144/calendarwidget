@@ -32,7 +32,7 @@ namespace CalendarWidget
                 Margin = new Thickness(0, 4, 0, 14),
                 Foreground = Brushes.DimGray,
                 TextWrapping = TextWrapping.Wrap,
-                Text = "連接後，你的 Google 日曆和有到期日的 Google 待辦會出現在「日曆」分頁，在那裡選擇要顯示哪些、顏色與順序。程式只有「讀取」的權限，不會修改你的 Google 資料。"
+                Text = "連接後，你的 Google 日曆和有到期日的 Google 待辦會出現在「日曆」分頁，在那裡選擇要顯示哪些、顏色與順序。平常程式只有「讀取」的權限；第一次在月曆上新增、修改或刪除行程時，才會另外請你授權「寫入行程」，而且只會在你按下按鈕時才更動你指定的那一筆行程。"
             });
 
             // 用戶端設定：程式有內建用戶端（公開發布的版本）時完全不顯示，使用者只需要登入自己的帳號。

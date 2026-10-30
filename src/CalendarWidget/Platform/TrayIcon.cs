@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace CalendarWidget
 {
@@ -9,6 +10,7 @@ namespace CalendarWidget
     internal sealed class TrayIcon : IDisposable
     {
         private const int WM_APP_TRAY = 0x8001;
+        private const int WM_LBUTTONDBLCLK = 0x0203;
         private const int WM_RBUTTONUP = 0x0205;
         private const int WM_CONTEXTMENU = 0x007B;
         private const int WM_NULL = 0x0000;
@@ -30,9 +32,11 @@ namespace CalendarWidget
         private const int CmdSettings = 2;
         private const int CmdExit = 3;
         private const int CmdUpdate = 4;
+        private const int CmdShow = 5;
 
-        private static readonly IntPtr HWND_MESSAGE = new IntPtr(-3);
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
 
+        private readonly Action _onShow;
         private readonly Action _onSettings;
         private readonly Action _onToday;
         private readonly Action _onCheckUpdate;
@@ -40,26 +44,48 @@ namespace CalendarWidget
         private readonly string _tip;
         private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
         private HwndSource _source;
+        private DispatcherTimer _retry;
         private IntPtr _icon;
         private bool _added;
 
-        public TrayIcon(string tip, Action onSettings, Action onToday, Action onCheckUpdate, Action onExit)
+        public TrayIcon(string tip, Action onShow, Action onSettings, Action onToday, Action onCheckUpdate, Action onExit)
         {
             _tip = tip;
+            _onShow = onShow;
             _onSettings = onSettings;
             _onToday = onToday;
             _onCheckUpdate = onCheckUpdate;
             _onExit = onExit;
 
+            // 用「隱藏的最上層視窗」收訊息，不是 message-only 視窗：message-only 視窗收不到廣播訊息，
+            // 而「檔案總管重新啟動」的通知（TaskbarCreated）正是廣播，收不到的話圖示被清掉後就不會回來
             _source = new HwndSource(new HwndSourceParameters("CalendarWidgetTray")
             {
-                ParentWindow = HWND_MESSAGE,
-                WindowStyle = 0
+                ParentWindow = IntPtr.Zero,
+                WindowStyle = 0,                  // 沒有 WS_VISIBLE：不會顯示
+                ExtendedWindowStyle = WS_EX_TOOLWINDOW,   // 不出現在 Alt+Tab 與工作列
+                Width = 0,
+                Height = 0
             });
             _source.AddHook(WndProc);
 
             _icon = ExtractIcon(IntPtr.Zero, Assembly.GetExecutingAssembly().Location, 0);
             Add();
+            if (!_added) StartRetry();
+        }
+
+        // 開機自動啟動時，工作列可能還沒準備好，第一次加圖示會失敗：隔幾秒再試，最多試一分鐘
+        private void StartRetry()
+        {
+            int attempts = 0;
+            _retry = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _retry.Tick += delegate
+            {
+                attempts++;
+                if (_source != null && !_added) Add();
+                if (_added || attempts >= 30 || _source == null) { _retry.Stop(); }
+            };
+            _retry.Start();
         }
 
         private void Add()
@@ -90,6 +116,12 @@ namespace CalendarWidget
                     ShowMenu();
                     handled = true;
                 }
+                else if (mouse == WM_LBUTTONDBLCLK)
+                {
+                    // 按了 Win+D（顯示桌面）之後月曆會被桌面蓋住：雙按系統匣圖示把它叫出來
+                    _onShow();
+                    handled = true;
+                }
             }
             else if (_taskbarCreated != 0 && (uint)msg == _taskbarCreated)
             {
@@ -104,6 +136,7 @@ namespace CalendarWidget
             IntPtr menu = CreatePopupMenu();
             try
             {
+                AppendMenuW(menu, MF_STRING, (UIntPtr)CmdShow, "顯示月曆");
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdSettings, "設定…");
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdToday, "回到今天");
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdUpdate, "檢查更新…");
@@ -118,6 +151,7 @@ namespace CalendarWidget
 
                 switch (cmd)
                 {
+                    case CmdShow: _onShow(); break;
                     case CmdSettings: _onSettings(); break;
                     case CmdToday: _onToday(); break;
                     case CmdUpdate: _onCheckUpdate(); break;
@@ -132,6 +166,7 @@ namespace CalendarWidget
 
         public void Dispose()
         {
+            if (_retry != null) { _retry.Stop(); _retry = null; }
             if (_added)
             {
                 var data = NewData();

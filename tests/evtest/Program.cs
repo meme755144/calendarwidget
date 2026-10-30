@@ -296,6 +296,26 @@ static class P
         Check("pending: all-day reminder gone the next day", EventReminderLogic.Pending(ad2, new DateTime(2026, 10, 28, 0, 0, 1), notAcked, NoSnooze).Count == 0);
         Check("pending: sorted by start time", EventReminderLogic.Pending(EventReminderLogic.Compute(Store(Ev("晚的", new DateTime(2026, 10, 26, 14, 30, 0), 60), Ev("早的", new DateTime(2026, 10, 26, 14, 5, 0), 60)), Settings.EventReminderPerEvent, 10, Now, 8), Now, notAcked, NoSnooze).First().Item.Title == "早的");
 
+        // 「開始時提醒」（0 分鐘）：提醒時間就是開始時間，要在開始的那一刻跳出來，不能一到點就過期
+        var atStart = EventReminderLogic.Compute(Store(Ev("準時", new DateTime(2026, 10, 26, 14, 0, 0), 0)), Settings.EventReminderPerEvent, 10, Now, 8);
+        Check("pending: a 0-minute (at start) reminder shows when the event starts and a few minutes after",
+            atStart.Count == 1 && EventReminderLogic.Pending(atStart, new DateTime(2026, 10, 26, 13, 59, 59), notAcked, NoSnooze).Count == 0 &&
+            EventReminderLogic.Pending(atStart, new DateTime(2026, 10, 26, 14, 0, 0), notAcked, NoSnooze).Count == 1 &&
+            EventReminderLogic.Pending(atStart, new DateTime(2026, 10, 26, 14, 4, 59), notAcked, NoSnooze).Count == 1 &&
+            EventReminderLogic.Pending(atStart, new DateTime(2026, 10, 26, 14, 5, 0), notAcked, NoSnooze).Count == 0);
+        var atStartCustom = EventReminderLogic.Compute(Store(Ev("自訂零", new DateTime(2026, 10, 26, 14, 0, 0))), Settings.EventReminderCustom, 0, Now, 8);
+        Check("pending: custom mode with 0 minutes also shows at the start", EventReminderLogic.Pending(atStartCustom, new DateTime(2026, 10, 26, 14, 0, 30), notAcked, NoSnooze).Count == 1);
+        Check("next wake: a 0-minute reminder wakes us at the start time", Fmt(EventReminderLogic.NextWake(atStart, new DateTime(2026, 10, 26, 13, 0, 0), notAcked, NoSnooze).Value) == "10-26 14:00");
+
+        // 長的提醒（自訂最多 28 天）要掃得夠遠，不然會拖到只剩 8 天才跳出
+        Check("scan range: long reminders widen it, short ones keep 8 days",
+            EventReminderLogic.DaysToScan(Settings.EventReminderCustom, 14 * 1440) == 15 && EventReminderLogic.DaysToScan(Settings.EventReminderCustom, 10) == 8 &&
+            EventReminderLogic.DaysToScan(Settings.EventReminderPerEvent, 10) == 29 && EventReminderLogic.DaysToScan(Settings.EventReminderCustom, Settings.MaxEventReminderMinutes) == 29);
+        var farEvent = Ev("兩週後", Now.Date.AddDays(13).AddHours(10));
+        var farDues = EventReminderLogic.Compute(Store(farEvent), Settings.EventReminderCustom, 14 * 1440, Now, EventReminderLogic.DaysToScan(Settings.EventReminderCustom, 14 * 1440));
+        Check("a 14-day reminder is found for an event 13 days away; with the old 8-day scan it was not",
+            farDues.Count == 1 && EventReminderLogic.Compute(Store(farEvent), Settings.EventReminderCustom, 14 * 1440, Now, 8).Count == 0);
+
         // ===== 下一次要醒來的時間 =====
         var future = EventReminderLogic.Compute(Store(Ev("下午", new DateTime(2026, 10, 26, 16, 0, 0), 10, 30)), Settings.EventReminderPerEvent, 10, Now, 8);
         Check("next wake: earliest future due", Fmt(EventReminderLogic.NextWake(future, Now, notAcked, NoSnooze).Value) == "10-26 15:30");

@@ -62,10 +62,7 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                string temp = FilePath + ".tmp";
-                File.WriteAllLines(temp, _keys.OrderBy(k => k.Value).Select(k => k.Value.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) + "\t" + k.Key), new UTF8Encoding(false));
-                if (File.Exists(FilePath)) File.Delete(FilePath);
-                File.Move(temp, FilePath);
+                AtomicFile.WriteAllLines(FilePath, _keys.OrderBy(k => k.Value).Select(k => k.Value.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) + "\t" + k.Key), new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -75,6 +72,16 @@ namespace CalendarWidget
     // 行程提醒的規則（不碰畫面，方便單獨測試）
     internal static class EventReminderLogic
     {
+        internal const int StartTimeGraceMinutes = 5;   // 0 分鐘提醒在開始後多久內還算有效
+        internal const int DefaultDaysAhead = 8;
+
+        // 要往後掃描幾天：提醒可以提前很多天（自訂最多 28 天、行程自己帶的也可能是），掃得不夠遠，長的提醒就會拖到剩 8 天才跳出
+        internal static int DaysToScan(int mode, int customMinutes)
+        {
+            int minutes = mode == Settings.EventReminderCustom ? customMinutes : Settings.MaxEventReminderMinutes;
+            return Math.Max(DefaultDaysAhead, minutes / 1440 + 1);
+        }
+
         internal static string KeyOf(CalendarItem item, int minutes)
         {
             return (item.CalendarId ?? "") + "|" + item.Start.Value.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture) + "|" + item.Title + "|" + minutes;
@@ -109,7 +116,8 @@ namespace CalendarWidget
                         {
                             Item = item,
                             Due = start.AddMinutes(-m),
-                            Expires = item.AllDay ? start.AddDays(1) : start,
+                            // 「開始時提醒」（0 分鐘）的提醒時間就是開始時間，若到開始就過期就永遠不會跳出，所以多留一小段時間
+                            Expires = item.AllDay ? start.AddDays(1) : m > 0 ? start : start.AddMinutes(StartTimeGraceMinutes),
                             Minutes = m,
                             Key = key
                         });
@@ -189,7 +197,6 @@ namespace CalendarWidget
     // 提醒框一次只會有一個，內容會更新；「知道了」記下來之後不再提醒，「稍後再提醒」過幾分鐘再跳
     internal sealed class EventReminder
     {
-        private const int DaysAhead = 8;
         private const int SnoozeMinutes = 5;
         private static readonly TimeSpan MaxWait = TimeSpan.FromHours(6);   // 就算沒有任何事，每隔一陣子也重新看一次
 
@@ -212,19 +219,26 @@ namespace CalendarWidget
         // 資料更新了、設定改了、睡眠醒來時呼叫：重新看一次，並排好下一次
         public void Recheck()
         {
-            CheckNow();
-            ScheduleNext();
+            DateTime now = DateTime.Now;
+            var dues = Dues(now);   // 算一次，檢查與排程共用
+            CheckNow(dues, now);
+            ScheduleNext(dues, now);
         }
 
         private List<DueReminder> Dues(DateTime now)
         {
-            return EventReminderLogic.Compute(_store, _settings.EventReminderMode, _settings.EventReminderMinutes, now, DaysAhead);
+            return EventReminderLogic.Compute(_store, _settings.EventReminderMode, _settings.EventReminderMinutes, now, EventReminderLogic.DaysToScan(_settings.EventReminderMode, _settings.EventReminderMinutes));
         }
 
         public void CheckNow()
         {
             DateTime now = DateTime.Now;
-            var pending = EventReminderLogic.Pending(Dues(now), now, _acks.IsAcked, _snoozed);
+            CheckNow(Dues(now), now);
+        }
+
+        private void CheckNow(List<DueReminder> dues, DateTime now)
+        {
+            var pending = EventReminderLogic.Pending(dues, now, _acks.IsAcked, _snoozed);
             if (pending.Count == 0)
             {
                 CloseWindow();
@@ -266,9 +280,14 @@ namespace CalendarWidget
 
         private void ScheduleNext()
         {
-            _timer.Stop();
             DateTime now = DateTime.Now;
-            DateTime? wake = EventReminderLogic.NextWake(Dues(now), now, _acks.IsAcked, _snoozed);
+            ScheduleNext(Dues(now), now);
+        }
+
+        private void ScheduleNext(List<DueReminder> dues, DateTime now)
+        {
+            _timer.Stop();
+            DateTime? wake = EventReminderLogic.NextWake(dues, now, _acks.IsAcked, _snoozed);
 
             DateTime limit = now + MaxWait;
             if (_window != null) limit = now.AddSeconds(30);   // 提醒框開著時，每 30 秒更新一次「還有幾分鐘」

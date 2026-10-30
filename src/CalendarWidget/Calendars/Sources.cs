@@ -71,14 +71,14 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                File.WriteAllLines(SourcesFile, list.Select(s =>
+                AtomicFile.WriteAllLines(SourcesFile, list.Select(s =>
                     s.Id + "\t" + (s.Enabled ? "1" : "0") + "\t" + (s.Kind == ItemKind.Holiday ? "H" : "E") + "\t" +
                     s.IntervalMinutes.ToString(CultureInfo.InvariantCulture) + "\t" + s.Color + "\t" + Clean(s.Name)),
                     new UTF8Encoding(false));
 
                 Directory.CreateDirectory(DataPaths.LocalDir);
-                File.WriteAllLines(UrlsFile, list.Where(s => s.Url.Length > 0).Select(s =>
-                    s.Id + "\t" + Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(s.Url), Entropy, DataProtectionScope.CurrentUser))));
+                AtomicFile.WriteAllLines(UrlsFile, list.Where(s => s.Url.Length > 0).Select(s =>
+                    s.Id + "\t" + Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(s.Url), Entropy, DataProtectionScope.CurrentUser))), new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -128,6 +128,7 @@ namespace CalendarWidget
     internal sealed class SourceManager
     {
         private const int MaxDownloadBytes = 10 * 1024 * 1024;
+        private static readonly TimeSpan TotalDownloadTime = TimeSpan.FromMinutes(2);
         private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(10);
 
         private readonly ItemStore _store;
@@ -347,9 +348,6 @@ namespace CalendarWidget
                     if (text.IndexOf("BEGIN:VCALENDAR", StringComparison.OrdinalIgnoreCase) < 0)
                         throw new InvalidDataException("內容不是 ICS 日曆");
                     items = ParseText(text, snapshot);
-                    Directory.CreateDirectory(CacheDir);
-                    File.WriteAllText(CacheFile(snapshot.Id), text, new UTF8Encoding(false));
-                    File.WriteAllText(MetaFile(snapshot.Id), DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture));
                 }
                 catch (Exception ex)
                 {
@@ -379,6 +377,10 @@ namespace CalendarWidget
                         status.RetryAfter = DateTime.MinValue;
                         _store.SetSource(StoreKey(snapshot.Id), items);
                         RaiseChanged();
+
+                        // 確認這個來源還有效之後才存快取：先在背景存的話，抓的期間改了網址，舊網址的內容會被當成新來源的快取。
+                        // 同步存（一般的 ICS 只有幾十 KB，上限 10 MB 也只要幾十毫秒）：存完之後馬上「重新解析已儲存的那一份」（改載入範圍時）才一定讀得到
+                        SaveCache(snapshot.Id, text);
                     }
                     else
                     {
@@ -389,6 +391,18 @@ namespace CalendarWidget
                     ScheduleNext();
                 }));
             });
+        }
+
+        private static void SaveCache(string id, string text)
+        {
+            try
+            {
+                Directory.CreateDirectory(CacheDir);
+                AtomicFile.WriteAllText(CacheFile(id), text, new UTF8Encoding(false));
+                AtomicFile.WriteAllText(MetaFile(id), DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture), new UTF8Encoding(false));
+            }
+            catch (IOException) { }   // 存不下來只是下次啟動要重抓
+            catch (UnauthorizedAccessException) { }
         }
 
         private static List<CalendarItem> ParseText(string text, CalendarSource src)
@@ -415,6 +429,7 @@ namespace CalendarWidget
             // 本機檔案（例如「ICS 產生」分頁做出來的節日檔）：直接讀檔
             if (uri.Scheme == Uri.UriSchemeFile)
             {
+                if (uri.IsUnc) throw new InvalidDataException("不支援網路磁碟機路徑（\\\\主機\\…），請改用 http／https 網址或本機磁碟的檔案");
                 var info = new FileInfo(uri.LocalPath);
                 if (!info.Exists) throw new InvalidDataException("找不到這個檔案：" + uri.LocalPath);
                 if (info.Length > MaxDownloadBytes) throw new InvalidDataException("檔案太大（超過 10 MB）");
@@ -435,11 +450,14 @@ namespace CalendarWidget
             using (var mem = new MemoryStream())
             {
                 var buffer = new byte[16 * 1024];
+                var clock = System.Diagnostics.Stopwatch.StartNew();
                 int n;
                 while ((n = stream.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     mem.Write(buffer, 0, n);
                     if (mem.Length > MaxDownloadBytes) throw new InvalidDataException("檔案太大（超過 10 MB）");
+                    // 每次讀取各有 20 秒的逾時，但慢到一點一滴送的伺服器可以讓下載卡很久：整體另外設期限
+                    if (clock.Elapsed > TotalDownloadTime) throw new InvalidDataException("下載太久，已中止");
                 }
                 string text = Encoding.UTF8.GetString(mem.ToArray());
                 return text.Length > 0 && text[0] == '﻿' ? text.Substring(1) : text;
@@ -452,7 +470,10 @@ namespace CalendarWidget
             if (web != null)
             {
                 var resp = web.Response as HttpWebResponse;
-                if (resp != null) return "HTTP " + (int)resp.StatusCode;
+                if (resp != null)
+                {
+                    using (resp) return "HTTP " + (int)resp.StatusCode;   // 錯誤回應也要釋放，不然連線一直被佔著
+                }
                 if (web.Status == WebExceptionStatus.Timeout) return "連線逾時";
                 if (web.Status == WebExceptionStatus.NameResolutionFailure) return "找不到主機（可能沒有網路）";
                 return web.Status.ToString();

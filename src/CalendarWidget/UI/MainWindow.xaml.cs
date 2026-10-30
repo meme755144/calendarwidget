@@ -14,7 +14,7 @@ namespace CalendarWidget
 {
     public partial class MainWindow : Window
     {
-        private const double CellWidth = 36;
+        private const double BaseCellWidth = 36;
         private const double CellHeight = 38;
         private const int MaxDetailRows = 8;
         private static readonly string[] WeekdayNames = { "日", "一", "二", "三", "四", "五", "六" };
@@ -26,6 +26,7 @@ namespace CalendarWidget
         private static readonly Brush TextDone = Frozen("#8E90A8");    // 已完成的項目（有刪除線，仍然要讀得到）
         private static readonly Brush TextWeekend = Frozen("#FF9AA2");
         private static readonly Brush TodayFill = Frozen("#5B8DEF");
+        private static readonly Brush TodayOffFill = Frozen("#364E7C");   // 今天又是放假日時調淡的藍底（紅字放在上面才看得清楚）
         private static readonly Brush HoverFill = Frozen("#33FFFFFF");
         private static readonly Brush HoverFillWeak = Frozen("#14FFFFFF");
         private static readonly Brush SelectedBorder = Frozen("#CCFFFFFF");
@@ -89,20 +90,11 @@ namespace CalendarWidget
             _sources = sources;
             _google = google;
             _accounts = accounts;
-            _sources.Changed += delegate
-            {
-                BuildCalendar();
-                TrimMemory();
-                _eventReminder.Recheck();   // 行程更新了，可能有新的提醒
-            };
-            _accounts.Changed += delegate
-            {
-                BuildCalendar();
-                TrimMemory();
-                _eventReminder.Recheck();
-            };
+            // 啟動時好幾個來源（ICS、Google）會先後更新：合併成一次重畫、一次提醒重算，不要每個來源各做一次
+            _sources.Changed += delegate { QueueRefresh(true); };   // 行程更新了，可能有新的提醒
+            _accounts.Changed += delegate { QueueRefresh(true); };
             _offDays.Enabled = _settings.MarkOffDays;
-            _offDays.Changed += delegate { Dispatcher.BeginInvoke(new Action(BuildCalendar)); };   // 背景下載好行事曆了，重畫紅字
+            _offDays.Changed += delegate { Dispatcher.BeginInvoke(new Action(delegate { QueueRefresh(false); })); };   // 背景下載好行事曆了，重畫紅字（這個事件在背景執行緒上，先切回 UI 執行緒）
             Opacity = _settings.Opacity;
             _reminder = new HolidayReminder(_store, _settings, AckStore.Load(DateTime.Today));
             _reminder.Start();
@@ -112,7 +104,7 @@ namespace CalendarWidget
             _typhoonReminder = new TyphoonReminder(_typhoon.Alerts, _settings, AckStore.Load(DateTime.Today, "typhoon-acked.txt"));
             _typhoon.Changed += delegate
             {
-                BuildCalendar();                  // 公告有變，紅字要跟著變
+                QueueRefresh(false);                // 公告有變，紅字要跟著變
                 _typhoonReminder.OnDataChanged();   // 有還沒確認的公告就跳出提醒
             };
             RefreshLocalSources();
@@ -137,11 +129,40 @@ namespace CalendarWidget
             };
         }
 
+        private bool _refreshQueued;
+        private bool _refreshRecheck;
+
+        // 資料來源有更新時重畫月曆。多個來源在短時間內先後更新，只在這一輪的最後做一次（優先權較低，不搶使用者正在做的操作）。
+        // recheck = true：同時重算行程提醒與整理記憶體
+        private void QueueRefresh(bool recheck)
+        {
+            _refreshRecheck |= recheck;
+            if (_refreshQueued) return;
+            _refreshQueued = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(delegate
+            {
+                bool again = _refreshRecheck;
+                _refreshQueued = false;
+                _refreshRecheck = false;
+                BuildCalendar();
+                if (again)
+                {
+                    TrimMemory();
+                    _eventReminder.Recheck();
+                }
+            }));
+        }
+
         // 月曆整體大小：連文字一起等比例縮放
         private void ApplyScale()
         {
             double s = Settings.ClampScale(_settings.Scale);
             Root.LayoutTransform = Math.Abs(s - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
+
+            // 月曆的寬度由日期格子的寬度決定（7 欄）；下方清單與年月選擇畫面固定跟日期區一樣寬，
+            // 這樣不管清單裡的字多長（超過的用「…」截掉或換行），月曆的寬度都不會跟著改變
+            MonthPicker.Width = ContentWidth;
+            DetailPanel.Width = ContentWidth;
 
             // 下方「選取日期的行程與待辦」可以另外調大小
             DetailTitle.FontSize = Fs(13);
@@ -149,6 +170,10 @@ namespace CalendarWidget
             TodoInput.FontSize = Fs(12);
             TodoHint.FontSize = Fs(12);
         }
+
+        // 日期格子的寬度：基本寬度乘上設定的「月曆寬度」；整個月曆的內容寬度是 7 欄（每格左右各 1 的邊界）
+        private double CellWidth { get { return Math.Round(BaseCellWidth * Settings.ClampWidthScale(_settings.WidthScale)); } }
+        private double ContentWidth { get { return 7 * (CellWidth + 2); } }
 
         private double DetailFactor { get { return Settings.ClampDetailScale(_settings.DetailScale); } }
         private double DotFactor { get { return Settings.ClampDotScale(_settings.DotScale); } }
@@ -361,9 +386,13 @@ namespace CalendarWidget
             BuildCalendar();
         }
 
+        // 可以翻到的年份範圍。不開放到 0001／9999：月曆格子會多算前後幾天，在最邊界會超出 DateTime 的範圍而丟例外
+        private const int MinYear = 1900;
+        private const int MaxYear = 2100;
+
         private static int ClampYearPage(int start)
         {
-            return Math.Max(1, Math.Min(9999 - 11, start));
+            return Math.Max(MinYear, Math.Min(MaxYear - 11, start));
         }
 
         // 往前或往後一格：日期畫面換月、選月份畫面換年、選年份畫面換一頁（12 年）
@@ -372,7 +401,7 @@ namespace CalendarWidget
             switch (_pickerLevel)
             {
                 case PickerLevel.Months:
-                    _pickerYear = Math.Max(1, Math.Min(9999, _pickerYear + direction));
+                    _pickerYear = Math.Max(MinYear, Math.Min(MaxYear, _pickerYear + direction));
                     BuildCalendar();
                     break;
                 case PickerLevel.Years:
@@ -380,8 +409,8 @@ namespace CalendarWidget
                     BuildCalendar();
                     break;
                 default:
-                    if (direction < 0 && _viewMonth.Year <= 1 && _viewMonth.Month == 1) return;
-                    if (direction > 0 && _viewMonth.Year >= 9999 && _viewMonth.Month == 12) return;
+                    if (direction < 0 && _viewMonth.Year <= MinYear && _viewMonth.Month == 1) return;
+                    if (direction > 0 && _viewMonth.Year >= MaxYear && _viewMonth.Month == 12) return;
                     ShowMonth(_viewMonth.AddMonths(direction));
                     break;
             }
@@ -513,7 +542,8 @@ namespace CalendarWidget
             bool today = date == DateTime.Today;
             bool selected = date == _selected;
 
-            Brush fore = today ? Brushes.White : (!inMonth ? TextDim : (off ? TextWeekend : TextNormal));
+            // 今天是藍底白字；今天剛好是放假日（週六日、補假、停班停課）時，藍底調淡、數字跟其他放假日一樣是紅字
+            Brush fore = today ? (off ? TextWeekend : Brushes.White) : (!inMonth ? TextDim : (off ? TextWeekend : TextNormal));
 
             var number = new TextBlock
             {
@@ -558,7 +588,7 @@ namespace CalendarWidget
                 CornerRadius = new CornerRadius(6),
                 BorderThickness = new Thickness(1.5),
                 BorderBrush = selected ? SelectedBorder : Brushes.Transparent,
-                Background = today ? TodayFill : Brushes.Transparent,
+                Background = today ? (off ? TodayOffFill : TodayFill) : Brushes.Transparent,
                 Child = content
             };
 
@@ -628,6 +658,8 @@ namespace CalendarWidget
             string offNote = _offDays.Describe(_selected);
             if (offNote != null) title += "　" + offNote;
             DetailTitle.Text = title;
+            // 標題太長（例如後面接了很長的節日名稱）會用「…」截掉，完整的字放在提示裡
+            DetailTitle.ToolTip = title.Length > 14 ? title : null;
 
             DetailList.Children.Clear();
             // 颱風假的說明比較長，放在標題下面一行（紅字），不要擠在標題後面把視窗撐寬
@@ -640,7 +672,6 @@ namespace CalendarWidget
                     FontSize = Fs(12),
                     Foreground = TextWeekend,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 260,
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(0, 0, 0, 3)
                 });
@@ -688,7 +719,6 @@ namespace CalendarWidget
                 Text = question,
                 FontSize = Fs(12),
                 Foreground = TextNormal,
-                MaxWidth = 236,
                 TextWrapping = TextWrapping.Wrap
             };
             panel.Children.Add(questionText);
@@ -819,9 +849,9 @@ namespace CalendarWidget
             var label = new TextBlock
             {
                 FontSize = Fs(12),
-                // 有 MaxWidth 的元素在剩餘空間比它寬時會被置中；要明確靠左，不同種類的列文字左緣才會對齊
+                // 明確靠左，不同種類的列文字左緣才會對齊。字的寬度不另外設上限：這一列是 DockPanel，
+                // 文字佔掉圓點、✕、✎ 之後剩下的寬度，超過就換行（下方清單的寬度固定，不會被撐寬）
                 HorizontalAlignment = HorizontalAlignment.Left,
-                MaxWidth = canEdit ? 185 : canDelete ? 205 : 236,
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = item.Done ? TextDone : TextNormal,
                 TextDecorations = item.Done ? TextDecorations.Strikethrough : null
@@ -1077,7 +1107,7 @@ namespace CalendarWidget
             NativeMethods.SetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE, ex);
         }
 
-        private static Border MakeCell(string text, Brush foreground, Brush fill)
+        private Border MakeCell(string text, Brush foreground, Brush fill)
         {
             return new Border
             {
@@ -1163,7 +1193,8 @@ namespace CalendarWidget
                 _trimQueued = false;
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
-                NativeMethods.EmptyWorkingSet(System.Diagnostics.Process.GetCurrentProcess().Handle);
+                using (var self = System.Diagnostics.Process.GetCurrentProcess())   // 要 Dispose，不然每次整理都多留一個控制代碼
+                    NativeMethods.EmptyWorkingSet(self.Handle);
             }));
         }
 
@@ -1200,6 +1231,9 @@ namespace CalendarWidget
         {
             DateTime today = DateTime.Today;
             if (_selected == _lastToday) _selected = today;
+            // 正看著「今天所在的月份」的話，跨月（例如 10/31 → 11/1）也要跟著換月，不然新的今天會落在灰色的月外格子裡
+            if (_pickerLevel == PickerLevel.None && _viewMonth == FirstOfMonth(_lastToday))
+                _viewMonth = FirstOfMonth(today);
             _lastToday = today;
             BuildCalendar();
             TrimMemory();
@@ -1257,10 +1291,29 @@ namespace CalendarWidget
                 NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
         }
 
+        private bool _raising;   // ShowWidget 正在把視窗叫出來：這時不要把 Z 順序改回最底層
+
+        // 按 Win+D（顯示桌面）之後，桌面會蓋住放在最底層的月曆。雙按系統匣圖示（或選單的「顯示月曆」）把它叫出來：
+        // 帶到其他視窗的最前面，但不搶走目前的焦點。之後只要別的視窗被點一下，就會照常蓋在它上面
+        internal void ShowWidget()
+        {
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Show();
+            ClampToScreen();   // 螢幕設定變過的話，確保人看得到
+            _raising = true;
+            try
+            {
+                const uint flags = NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE;
+                NativeMethods.SetWindowPos(_hwnd, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
+                NativeMethods.SetWindowPos(_hwnd, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+            }
+            finally { _raising = false; }
+        }
+
         // 任何會改變 Z 順序的操作，一律改成放到最底層
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
+            if (msg == NativeMethods.WM_WINDOWPOSCHANGING && !_raising)
             {
                 var pos = (NativeMethods.WINDOWPOS)Marshal.PtrToStructure(lParam, typeof(NativeMethods.WINDOWPOS));
                 if ((pos.flags & NativeMethods.SWP_NOZORDER) == 0)
@@ -1278,6 +1331,7 @@ namespace CalendarWidget
         {
             _tray = new TrayIcon(
                 "月曆小工具",
+                ShowWidget,
                 OpenSettings,
                 GoToToday,
                 CheckForUpdates,

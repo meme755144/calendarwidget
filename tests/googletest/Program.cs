@@ -82,8 +82,36 @@ static class P
             Post(Fake + "/register?code=CODE123&challenge=" + Uri.EscapeDataString(q["code_challenge"]));
             Task.Run(() => { Thread.Sleep(200); Get(q["redirect_uri"] + "/?code=CODE123&state=WRONG"); });
         };
-        var ex = Expect(() => auth.Authorize(TimeSpan.FromSeconds(20)));
-        Check("state mismatch aborts", ex != null && ex.Message.Contains("不符"), ex == null ? "no exception" : ex.Message);
+        var ex = Expect(() => auth.Authorize(TimeSpan.FromSeconds(3)));
+        Check("a request with the wrong state is rejected, not accepted (the login just keeps waiting and times out)", ex != null && ex.Message.Contains("逾時"), ex == null ? "no exception" : ex.Message);
+
+        // 2b. 別的程式亂打回呼的位址（state 不對）不能讓真正的登入失敗：先收到一個假的，再收到真的，登入仍然成功
+        auth.OpenBrowser = url =>
+        {
+            var q = Query(url);
+            Post(Fake + "/register?code=CODE123&challenge=" + Uri.EscapeDataString(q["code_challenge"]));
+            Task.Run(() =>
+            {
+                Thread.Sleep(200);
+                try { Get(q["redirect_uri"] + "/?code=EVIL&state=WRONG"); } catch (Exception) { }   // 伺服器回 400
+                Thread.Sleep(200);
+                Get(q["redirect_uri"] + "/?code=CODE123&state=" + Uri.EscapeDataString(q["state"]));
+            });
+        };
+        ex = Expect(() => auth.Authorize(TimeSpan.FromSeconds(20)));
+        Check("a forged callback does not break the real login", ex == null && secrets.RefreshToken.Length > 0, ex == null ? "" : ex.Message);
+
+        // 2c. 打不開瀏覽器（沒有預設瀏覽器）不能中止登入：網址還在，可以複製到瀏覽器貼上完成
+        string urlSeenWhenBrowserFailed = null;
+        auth.OpenBrowser = url =>
+        {
+            var q = Query(url);
+            Post(Fake + "/register?code=CODE123&challenge=" + Uri.EscapeDataString(q["code_challenge"]));
+            Task.Run(() => { Thread.Sleep(300); urlSeenWhenBrowserFailed = auth.AuthUrl; Get(q["redirect_uri"] + "/?code=CODE123&state=" + Uri.EscapeDataString(q["state"])); });
+            throw new System.ComponentModel.Win32Exception("no default browser");
+        };
+        ex = Expect(() => auth.Authorize(TimeSpan.FromSeconds(20)));
+        Check("a browser that cannot be opened does not abort the login (the copyable url is still available)", ex == null && urlSeenWhenBrowserFailed != null, ex == null ? "no url" : ex.Message);
 
         // 3. 使用者拒絕授權
         auth.OpenBrowser = url =>
@@ -176,7 +204,7 @@ static class P
 
         // 9. 待辦
         var tasks = client.FetchTasks("#ffd166", today.AddDays(-62), today.AddDays(400));
-        Check("tasks: only those with due date and title", tasks.Count == 2 && tasks.Any(t => t.Title == "報帳") && tasks.Any(t => t.Title == "已完成的待辦"), string.Join("|", tasks.Select(t => t.Title)));
+        Check("tasks: only those with due date and title (and the second page of task lists is read too)", tasks.Count == 3 && tasks.Any(t => t.Title == "報帳") && tasks.Any(t => t.Title == "已完成的待辦") && tasks.Any(t => t.Title == "第二頁清單的待辦"), string.Join("|", tasks.Select(t => t.Title)));
         Check("tasks: kind, color, done flag", tasks.All(t => t.Kind == ItemKind.GoogleTask && t.Color == "#ffd166") && tasks.First(t => t.Title == "已完成的待辦").Done && !tasks.First(t => t.Title == "報帳").Done);
         Check("tasks: due date is the calendar date", tasks.First(t => t.Title == "報帳").Date == today.AddDays(2));
 

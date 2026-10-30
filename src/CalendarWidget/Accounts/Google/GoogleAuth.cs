@@ -123,7 +123,8 @@ namespace CalendarWidget
         public const string WriteScope = "https://www.googleapis.com/auth/calendar.events";
 
         private readonly GoogleSecrets _secrets;
-        private readonly object _gate = new object();
+        private readonly object _gate = new object();          // 只保護欄位的讀寫，不在裡面連線
+        private readonly object _refreshGate = new object();   // 同一時間只讓一個執行緒去換存取權杖
         private string _accessToken;
         private DateTime _expiresUtc;
         private TcpListener _listener;
@@ -170,12 +171,27 @@ namespace CalendarWidget
             {
                 if (_accessToken != null && DateTime.UtcNow < _expiresUtc.AddSeconds(-60)) return _accessToken;
                 if (!IsSignedIn) throw new GoogleException("尚未連接 Google 帳號", true);
+            }
+
+            // 換新的權杖要連線，網路不好時可能等很久：不能一直握著 _gate，否則 UI 執行緒（中斷連接、儲存設定）會跟著卡住。
+            // _refreshGate 只負責同一時間只讓一個執行緒去換
+            lock (_refreshGate)
+            {
+                string clientId, clientSecret, refresh;
+                lock (_gate)
+                {
+                    if (_accessToken != null && DateTime.UtcNow < _expiresUtc.AddSeconds(-60)) return _accessToken;   // 等鎖的期間別人已經換好了
+                    if (!IsSignedIn) throw new GoogleException("尚未連接 Google 帳號", true);
+                    clientId = _secrets.ClientId;
+                    clientSecret = _secrets.ClientSecret;
+                    refresh = _secrets.RefreshToken;
+                }
 
                 var result = GoogleHttp.Send("POST", GoogleEndpoints.Token, null, GoogleHttp.Form(new[]
                 {
-                    new KeyValuePair<string, string>("client_id", _secrets.ClientId),
-                    new KeyValuePair<string, string>("client_secret", _secrets.ClientSecret),
-                    new KeyValuePair<string, string>("refresh_token", _secrets.RefreshToken),
+                    new KeyValuePair<string, string>("client_id", clientId),
+                    new KeyValuePair<string, string>("client_secret", clientSecret),
+                    new KeyValuePair<string, string>("refresh_token", refresh),
                     new KeyValuePair<string, string>("grant_type", "refresh_token")
                 }));
 
@@ -188,18 +204,33 @@ namespace CalendarWidget
                     throw new GoogleException("無法取得存取權杖（" + error + "）", needsSignIn);
                 }
 
-                _accessToken = Json.Str(json, "access_token");
+                string token = Json.Str(json, "access_token");
                 double seconds;
-                _expiresUtc = DateTime.UtcNow.AddSeconds(double.TryParse(Json.Str(json, "expires_in"), out seconds) ? seconds : 3000);
+                DateTime expires = DateTime.UtcNow.AddSeconds(double.TryParse(Json.Str(json, "expires_in"), out seconds) ? seconds : 3000);
+                string scope = Json.Str(json, "scope");   // Google 回報目前實際有的授權範圍（使用者在同意畫面可能取消勾選其中一部分），以它為準
 
-                // Google 回報目前實際有的授權範圍（使用者在同意畫面可能取消勾選其中一部分），以它為準
-                string scope = Json.Str(json, "scope");
-                if (!string.IsNullOrEmpty(scope) && scope != _secrets.Scopes)
+                bool saveScope = false, replaced = false;
+                lock (_gate)
                 {
-                    _secrets.Scopes = scope;
-                    _secrets.Save();
+                    if (!IsSignedIn) throw new GoogleException("尚未連接 Google 帳號", true);   // 換的期間被中斷連接了：結果不要留下
+                    if (_secrets.RefreshToken != refresh)
+                    {
+                        replaced = true;   // 換的期間重新登入過，這份是用舊憑證換的，丟掉重來
+                    }
+                    else
+                    {
+                        _accessToken = token;
+                        _expiresUtc = expires;
+                        if (!string.IsNullOrEmpty(scope) && scope != _secrets.Scopes)
+                        {
+                            _secrets.Scopes = scope;
+                            saveScope = true;
+                        }
+                    }
                 }
-                return _accessToken;
+                if (replaced) return AccessToken();
+                if (saveScope) _secrets.Save();
+                return token;
             }
         }
 
@@ -264,7 +295,10 @@ namespace CalendarWidget
 
                 string url = GoogleEndpoints.Auth + "?" + GoogleHttp.Form(fields);
                 AuthUrl = url;
-                OpenBrowser(url);
+                // 打不開瀏覽器（沒有預設瀏覽器等）也不能就此中止：畫面上有「複製登入網址」，使用者貼到瀏覽器一樣能完成
+                try { OpenBrowser(url); }
+                catch (System.ComponentModel.Win32Exception) { }
+                catch (InvalidOperationException) { }
 
                 string code = WaitForCode(listener, state, timeout);
                 Exchange(code, verifier, redirect, scope);
@@ -333,8 +367,9 @@ namespace CalendarWidget
                     }
                     if (gotState != state)
                     {
+                        // 不是我們發出去的登入（本機其他程式或網頁亂打這個埠）：拒絕並繼續等真正的回應，不要讓別人能讓登入失敗
                         Respond(stream, 400, "State mismatch");
-                        throw new GoogleException("登入驗證碼不符，已中止", false);
+                        continue;
                     }
                     if (error != null)
                     {
@@ -342,7 +377,8 @@ namespace CalendarWidget
                         throw new GoogleException(error == "access_denied" ? "你拒絕了授權" : "登入失敗（" + error + "）", false);
                     }
 
-                    Respond(stream, 200, "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h3>已連接 Google 帳號</h3><p>可以關閉這個頁面，回到月曆小工具了。</p></body></html>");
+                    // 這時還沒拿授權碼去換憑證，換失敗的話小工具會自己顯示原因，所以這裡只說「已收到」
+                    Respond(stream, 200, "<html><meta charset='utf-8'><body style='font-family:sans-serif'><h3>已收到 Google 的授權</h3><p>可以關閉這個頁面，回到月曆小工具。</p></body></html>");
                     return gotCode;
                 }
             }
@@ -427,9 +463,11 @@ namespace CalendarWidget
         {
             var sb = new StringBuilder();
             var buf = new byte[1];
+            var clock = Stopwatch.StartNew();
             try
             {
-                while (sb.Length < 4096 && stream.Read(buf, 0, 1) == 1)
+                // 整個請求行最多讀 3 秒：一個只連線、一點一滴送資料的本機程式，不能把這條等待登入的執行緒卡住
+                while (sb.Length < 4096 && clock.ElapsedMilliseconds < 3000 && stream.Read(buf, 0, 1) == 1)
                 {
                     if (buf[0] == '\n') break;
                     sb.Append((char)buf[0]);

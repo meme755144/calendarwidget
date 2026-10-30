@@ -27,6 +27,21 @@ namespace CalendarWidget
             return null;
         }
 
+        private const int MaxChars = 2 * 1024 * 1024;   // 正常的資料只有幾 KB；網址可以自訂，所以設上限，不讓怪伺服器塞爆記憶體
+
+        private static string ReadLimited(StreamReader reader)
+        {
+            var sb = new StringBuilder();
+            var buffer = new char[8192];
+            int n;
+            while ((n = reader.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                sb.Append(buffer, 0, n);
+                if (sb.Length > MaxChars) throw new InvalidDataException("資料太大，已中止");
+            }
+            return sb.ToString();
+        }
+
         // 下載。會卡住呼叫的執行緒，請在背景執行緒呼叫。網路錯誤丟 WebException；伺服器回 304 時 NotModified 是 true
         public static Result Fetch(string url, string etag)
         {
@@ -44,7 +59,7 @@ namespace CalendarWidget
                 using (var resp = (HttpWebResponse)req.GetResponse())
                 using (var stream = resp.GetResponseStream())
                 using (var reader = new StreamReader(stream, Encoding.UTF8))
-                    return new Result { Text = reader.ReadToEnd(), ETag = resp.Headers[HttpResponseHeader.ETag] };
+                    return new Result { Text = ReadLimited(reader), ETag = resp.Headers[HttpResponseHeader.ETag] };
             }
             catch (WebException ex)
             {

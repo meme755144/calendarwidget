@@ -66,7 +66,7 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                File.WriteAllLines(FilePath, ids.Distinct(), new UTF8Encoding(false));
+                AtomicFile.WriteAllLines(FilePath, ids.Distinct(), new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -201,14 +201,11 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                string temp = FilePath + ".tmp";
-                File.WriteAllLines(temp, _events.Select(e =>
+                AtomicFile.WriteAllLines(FilePath, _events.Select(e =>
                     e.Id + "\t" + e.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\t" + (e.AllDay ? "1" : "0") + "\t" +
                     e.Start.ToString(@"hh\:mm", CultureInfo.InvariantCulture) + "\t" + e.End.ToString(@"hh\:mm", CultureInfo.InvariantCulture) + "\t" +
                     e.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\t" + e.Title),
                     new UTF8Encoding(false));
-                if (File.Exists(FilePath)) File.Delete(FilePath);
-                File.Move(temp, FilePath);
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -301,12 +298,9 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(DataPaths.Dir);
-                string temp = FilePath + ".tmp";
-                File.WriteAllLines(temp, _todos.Select(t =>
+                AtomicFile.WriteAllLines(FilePath, _todos.Select(t =>
                     t.Id + "\t" + t.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "\t" + (t.Done ? "1" : "0") + "\t" + t.Title),
                     new UTF8Encoding(false));
-                if (File.Exists(FilePath)) File.Delete(FilePath);
-                File.Move(temp, FilePath);
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

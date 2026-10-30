@@ -314,11 +314,23 @@ namespace CalendarWidget
         public List<CalendarItem> FetchTasks(string color, DateTime from, DateTime to)
         {
             var items = new List<CalendarItem>();
-            var lists = Get(GoogleEndpoints.Tasks + "/users/@me/lists?maxResults=100&fields=" + Uri.EscapeDataString("items(id)"));
-            foreach (var list in Json.List(lists, "items"))
+            // 待辦清單也要翻頁，不然超過 100 個清單的帳號會漏掉後面的
+            var listIds = new List<string>();
+            string listToken = null;
+            do
             {
-                string listId = Json.Str(list, "id");
-                if (string.IsNullOrEmpty(listId)) continue;
+                var lists = Get(GoogleEndpoints.Tasks + "/users/@me/lists?maxResults=100&fields=" + Uri.EscapeDataString("nextPageToken,items(id)") +
+                                (listToken != null ? "&pageToken=" + Uri.EscapeDataString(listToken) : ""));
+                foreach (var list in Json.List(lists, "items"))
+                {
+                    string id = Json.Str(list, "id");
+                    if (!string.IsNullOrEmpty(id)) listIds.Add(id);
+                }
+                listToken = Json.Str(lists, "nextPageToken");
+            } while (listToken != null);
+
+            foreach (string listId in listIds)
+            {
 
                 string pageToken = null;
                 do

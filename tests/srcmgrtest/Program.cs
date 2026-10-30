@@ -56,6 +56,19 @@ static class P
         Check("LoadRange: From / To follow the months", LoadRange.From == today.AddMonths(-24) && LoadRange.To == today.AddMonths(36));
         LoadRange.PastMonths = 6; LoadRange.FutureMonths = 12;
 
+        // 月曆寬度：預設 100%（最窄），存檔後讀得回來；超出範圍的值會被限制在 100% ~ 200%
+        var w0 = Settings.Load();
+        w0.WidthScale = 1.5; w0.Save();
+        var w1 = Settings.Load();
+        File.AppendAllText(Path.Combine(dir, "settings.ini"), "WidthScale=0.5\n");
+        var w2 = Settings.Load();
+        File.AppendAllText(Path.Combine(dir, "settings.ini"), "WidthScale=9\n");
+        var w3 = Settings.Load();
+        Check("settings: width scale defaults to 100% (narrowest), survives a restart, and is clamped to 100%..200%",
+            Math.Abs(s0.WidthScale - 1.0) < 0.0001 && Math.Abs(w1.WidthScale - 1.5) < 0.0001 && Math.Abs(w2.WidthScale - 1.0) < 0.0001 && Math.Abs(w3.WidthScale - 2.0) < 0.0001,
+            s0.WidthScale + "/" + w1.WidthScale + "/" + w2.WidthScale + "/" + w3.WidthScale);
+        LoadRange.PastMonths = 6; LoadRange.FutureMonths = 12;   // Load 會把檔案裡的範圍套到 LoadRange，還原成預設給後面的測試用
+
         // ===== 網路上的 ICS：受「載入範圍」限制 =====
         DateTime near = today.AddDays(10), old = today.AddMonths(-4), far = today.AddMonths(14);
         var storeHttp = new ItemStore();
@@ -66,7 +79,7 @@ static class P
         listHttp.Add(srcHttp);
         mgrHttp.Apply(listHttp);
         Pump(() => storeHttp.For(near).Count > 0);
-        Check("http source: default range (6 months back, 12 ahead) includes 4 months ago and excludes 14 months ahead", storeHttp.For(near).Count == 1 && storeHttp.For(old).Count == 1 && storeHttp.For(far).Count == 0);
+        Check("http source: default range (6 months back, 12 ahead) includes 4 months ago and excludes 14 months ahead", storeHttp.For(near).Count == 1 && storeHttp.For(old).Count == 1 && storeHttp.For(far).Count == 0, "near=" + storeHttp.For(near).Count + " old=" + storeHttp.For(old).Count + " far=" + storeHttp.For(far).Count);
         LoadRange.PastMonths = 2;
         mgrHttp.Reparse();
         Pump(() => storeHttp.For(old).Count == 0);
@@ -74,7 +87,7 @@ static class P
         LoadRange.PastMonths = 6; LoadRange.FutureMonths = 18;
         mgrHttp.Reparse();
         Pump(() => storeHttp.For(far).Count == 1);
-        Check("range change: a wider range brings the far-away event back", storeHttp.For(far).Count == 1 && storeHttp.For(old).Count == 1);
+        Check("range change: a wider range brings the far-away event back", storeHttp.For(far).Count == 1 && storeHttp.For(old).Count == 1, "far=" + storeHttp.For(far).Count + " old=" + storeHttp.For(old).Count);
         LoadRange.FutureMonths = 12;
         mgrHttp.Apply(new List<CalendarSource>());   // 來源清單存在同一個資料夾，先清掉，免得下面的管理員也載到這個網路來源
 

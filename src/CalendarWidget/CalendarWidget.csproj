@@ -10,7 +10,7 @@
     <RootNamespace>CalendarWidget</RootNamespace>
     <DebugType>none</DebugType>
     <!-- 版本號只在這裡設定一處（「關於」頁、檢查更新都從這裡讀）；發版時同步改 CHANGELOG.md -->
-    <Version>0.9.0</Version>
+    <Version>0.9.1</Version>
     <Company>meme755144</Company>
     <Product>CalendarWidget</Product>
     <Copyright>Copyright (c) 2026 meme755144</Copyright>

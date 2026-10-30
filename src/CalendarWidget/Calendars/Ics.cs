@@ -48,31 +48,47 @@ namespace CalendarWidget
             {
                 if (ev.Cancelled) continue;
 
-                if (ev.RecurrenceKey.HasValue || string.IsNullOrEmpty(ev.Rrule))
+                // 一個事件的資料壞掉（日期超出範圍、規則怪異…）只略過那一個事件，不能讓整個日曆載入失敗
+                int before = result.Count;
+                try
                 {
-                    AddOccurrence(result, ev, ev.StartWall, rangeStart, rangeEnd, kind, color);
-                    continue;
+                    ExpandEvent(result, ev, overrides, rangeStart, rangeEnd, kind, color);
                 }
-
-                var rule = RRule.Parse(ev.Rrule, ev);
-                // 以事件自己的時區的「牆上時間」展開；多抓兩天避免時區換算造成邊界遺漏
-                DateTime limit = rangeEnd.Date.AddDays(2);
-                foreach (DateTime wall in rule.Expand(ev.StartWall, limit))
-                {
-                    DateTime key = ev.AllDay ? wall.Date : ToLocal(wall, ev.Zone);
-                    if (ev.ExDates.Contains(key)) continue;
-                    if (overrides.Contains(ev.Uid + "|" + key.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture))) continue;
-                    AddOccurrence(result, ev, wall, rangeStart, rangeEnd, kind, color);
-                }
+                catch (ArgumentException) { result.RemoveRange(before, result.Count - before); }
+                catch (OverflowException) { result.RemoveRange(before, result.Count - before); }
+                catch (FormatException) { result.RemoveRange(before, result.Count - before); }
             }
             return result;
+        }
+
+        private static void ExpandEvent(List<CalendarItem> result, Ev ev, HashSet<string> overrides, DateTime rangeStart, DateTime rangeEnd, ItemKind kind, string color)
+        {
+            if (ev.RecurrenceKey.HasValue || string.IsNullOrEmpty(ev.Rrule))
+            {
+                AddOccurrence(result, ev, ev.StartWall, rangeStart, rangeEnd, kind, color);
+                return;
+            }
+
+            var rule = RRule.Parse(ev.Rrule, ev);
+            // 以事件自己的時區的「牆上時間」展開；多抓兩天避免時區換算造成邊界遺漏
+            DateTime limit = rangeEnd.Date.AddDays(2);
+            foreach (DateTime wall in rule.Expand(ev.StartWall, limit))
+            {
+                DateTime key = ev.AllDay ? wall.Date : ToLocal(wall, ev.Zone);
+                if (ev.ExDates.Contains(key)) continue;
+                if (overrides.Contains(ev.Uid + "|" + key.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture))) continue;
+                AddOccurrence(result, ev, wall, rangeStart, rangeEnd, kind, color);
+            }
         }
 
         private static void AddOccurrence(List<CalendarItem> result, Ev ev, DateTime wall, DateTime rangeStart, DateTime rangeEnd, ItemKind kind, string color)
         {
             if (ev.AllDay)
             {
-                for (int i = 0; i < ev.Days; i++)
+                // 只走過落在範圍內的那幾天；跨幾十年的整天事件不用逐天跑完
+                int firstDay = Math.Max(0, (int)Math.Min(int.MaxValue, (rangeStart.Date - wall.Date).TotalDays));
+                int lastDay = (int)Math.Min(ev.Days - 1, (rangeEnd.Date - wall.Date).TotalDays);
+                for (int i = firstDay; i <= lastDay; i++)
                 {
                     DateTime d = wall.Date.AddDays(i);
                     if (d < rangeStart.Date || d > rangeEnd.Date) continue;
@@ -139,7 +155,9 @@ namespace CalendarWidget
                     if (v == "VEVENT" && inEvent)
                     {
                         inEvent = false;
-                        Ev ev = BuildEvent(props);
+                        Ev ev = null;
+                        try { ev = BuildEvent(props); }
+                        catch (ArgumentException) { }   // 壞掉的事件略過，不影響其他事件
                         if (ev != null)
                         {
                             if (alarms.Count > 0) ev.Reminders = alarms.Distinct().OrderBy(m => m).ToArray();
@@ -176,6 +194,9 @@ namespace CalendarWidget
             return ParseTriggerMinutes(trigger.Value);
         }
 
+        // 提醒最多提前 28 天；跟 Settings.MaxEventReminderMinutes 同值（這個檔單獨被測試專案連結，所以不直接引用 Settings）
+        private const int MaxTriggerMinutes = 40320;
+
         // "-PT15M" → 15、"-P1D" → 1440、"-P1DT2H" → 1560、"PT0S" → 0；開始「之後」的（正數）回傳 null
         internal static int? ParseTriggerMinutes(string value)
         {
@@ -197,7 +218,7 @@ namespace CalendarWidget
             {
                 char c = value[i];
                 if (c == 'T') { inTime = true; continue; }
-                if (char.IsDigit(c)) { number.Append(c); continue; }
+                if (c >= '0' && c <= '9') { number.Append(c); if (number.Length > 9) return null; continue; }   // 只收半形數字；位數太多的一定是亂寫的
                 if (number.Length == 0) return null;
 
                 double n = double.Parse(number.ToString(), CultureInfo.InvariantCulture);
@@ -215,20 +236,29 @@ namespace CalendarWidget
             }
             if (number.Length > 0 || !anyUnit) return null;   // 數字後面沒有單位、或根本沒有任何單位（例如只有 "-P"）都是無效的
             if (!negative && total > 0) return null;   // 開始之後才響的提醒不處理
+            if (total > MaxTriggerMinutes) return null;   // 提前超過 28 天的當作無效
             return (int)Math.Round(total);
         }
 
         private static IEnumerable<Prop> ReadProps(string text)
         {
             // 展開被折行的內容（下一行以空白或 Tab 開頭代表接續上一行）
+            // （用 StringBuilder 接：一個很長的屬性，例如內嵌的附件，分成幾千行時，逐行用字串相加會越接越慢）
             var lines = new List<string>();
+            StringBuilder current = null;
             foreach (string raw in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
             {
-                if (raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t') && lines.Count > 0)
-                    lines[lines.Count - 1] += raw.Substring(1);
+                if (raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t') && current != null)
+                {
+                    current.Append(raw, 1, raw.Length - 1);
+                }
                 else
-                    lines.Add(raw);
+                {
+                    if (current != null) lines.Add(current.ToString());
+                    current = new StringBuilder(raw);
+                }
             }
+            if (current != null) lines.Add(current.ToString());
 
             foreach (string line in lines)
             {
@@ -399,27 +429,86 @@ namespace CalendarWidget
             { "America/Los_Angeles", "Pacific Standard Time" },
             { "UTC", "UTC" },
             { "Etc/UTC", "UTC" },
-            { "GMT", "UTC" }
+            { "GMT", "UTC" },
+            // 以下是常見的其他時區（.NET Framework 在 Windows 上只認 Windows 的時區名稱，不認 IANA 名稱）；
+            // 不在表裡的時區會被當成電腦的時區，時間會整個偏掉
+            { "Asia/Calcutta", "India Standard Time" },
+            { "Asia/Colombo", "Sri Lanka Standard Time" },
+            { "Asia/Kathmandu", "Nepal Standard Time" },
+            { "Asia/Dhaka", "Bangladesh Standard Time" },
+            { "Asia/Karachi", "Pakistan Standard Time" },
+            { "Asia/Dubai", "Arabian Standard Time" },
+            { "Asia/Jerusalem", "Israel Standard Time" },
+            { "Asia/Jakarta", "SE Asia Standard Time" },
+            { "Asia/Ho_Chi_Minh", "SE Asia Standard Time" },
+            { "Asia/Saigon", "SE Asia Standard Time" },
+            { "Asia/Kuala_Lumpur", "Singapore Standard Time" },
+            { "Asia/Manila", "Singapore Standard Time" },
+            { "Asia/Macau", "China Standard Time" },
+            { "Europe/Dublin", "GMT Standard Time" },
+            { "Europe/Lisbon", "GMT Standard Time" },
+            { "Europe/Amsterdam", "W. Europe Standard Time" },
+            { "Europe/Rome", "W. Europe Standard Time" },
+            { "Europe/Vienna", "W. Europe Standard Time" },
+            { "Europe/Zurich", "W. Europe Standard Time" },
+            { "Europe/Stockholm", "W. Europe Standard Time" },
+            { "Europe/Oslo", "W. Europe Standard Time" },
+            { "Europe/Madrid", "Romance Standard Time" },
+            { "Europe/Brussels", "Romance Standard Time" },
+            { "Europe/Copenhagen", "Romance Standard Time" },
+            { "Europe/Prague", "Central Europe Standard Time" },
+            { "Europe/Budapest", "Central Europe Standard Time" },
+            { "Europe/Warsaw", "Central European Standard Time" },
+            { "Europe/Athens", "GTB Standard Time" },
+            { "Europe/Helsinki", "FLE Standard Time" },
+            { "Europe/Kiev", "FLE Standard Time" },
+            { "Europe/Istanbul", "Turkey Standard Time" },
+            { "Europe/Moscow", "Russian Standard Time" },
+            { "America/Toronto", "Eastern Standard Time" },
+            { "America/Vancouver", "Pacific Standard Time" },
+            { "America/Phoenix", "US Mountain Standard Time" },
+            { "America/Anchorage", "Alaskan Standard Time" },
+            { "America/Halifax", "Atlantic Standard Time" },
+            { "America/Mexico_City", "Central Standard Time (Mexico)" },
+            { "America/Sao_Paulo", "E. South America Standard Time" },
+            { "America/Argentina/Buenos_Aires", "Argentina Standard Time" },
+            { "Pacific/Honolulu", "Hawaiian Standard Time" },
+            { "Pacific/Auckland", "New Zealand Standard Time" },
+            { "Australia/Melbourne", "AUS Eastern Standard Time" },
+            { "Australia/Brisbane", "E. Australia Standard Time" },
+            { "Australia/Perth", "W. Australia Standard Time" },
+            { "Australia/Adelaide", "Cen. Australia Standard Time" },
+            { "Africa/Cairo", "Egypt Standard Time" },
+            { "Africa/Johannesburg", "South Africa Standard Time" },
+            { "Africa/Lagos", "W. Central Africa Standard Time" },
+            { "Africa/Nairobi", "E. Africa Standard Time" }
         };
 
+        // 多個來源會在不同的背景工作同時解析，所以快取要加鎖
         private static readonly Dictionary<string, TimeZoneInfo> ZoneCache = new Dictionary<string, TimeZoneInfo>(StringComparer.OrdinalIgnoreCase);
+        private static readonly object ZoneLock = new object();
+
+        internal static IEnumerable<string> KnownZoneIds { get { return WindowsZoneNames.Keys; } }
 
         internal static TimeZoneInfo FindZone(string tzid)
         {
-            TimeZoneInfo zone;
-            if (ZoneCache.TryGetValue(tzid, out zone)) return zone;
-
-            string windowsName;
-            string[] candidates = WindowsZoneNames.TryGetValue(tzid, out windowsName) ? new[] { windowsName, tzid } : new[] { tzid };
-            zone = null;
-            foreach (string name in candidates)
+            lock (ZoneLock)
             {
-                try { zone = TimeZoneInfo.FindSystemTimeZoneById(name); break; }
-                catch (TimeZoneNotFoundException) { }
-                catch (InvalidTimeZoneException) { }
+                TimeZoneInfo zone;
+                if (ZoneCache.TryGetValue(tzid, out zone)) return zone;
+
+                string windowsName;
+                string[] candidates = WindowsZoneNames.TryGetValue(tzid, out windowsName) ? new[] { windowsName, tzid } : new[] { tzid };
+                zone = null;
+                foreach (string name in candidates)
+                {
+                    try { zone = TimeZoneInfo.FindSystemTimeZoneById(name); break; }
+                    catch (TimeZoneNotFoundException) { }
+                    catch (InvalidTimeZoneException) { }
+                }
+                ZoneCache[tzid] = zone;   // 找不到時為 null，視為電腦的時區
+                return zone;
             }
-            ZoneCache[tzid] = zone;   // 找不到時為 null，視為電腦的時區
-            return zone;
         }
 
         internal static DateTime ToLocal(DateTime wall, TimeZoneInfo zone)
@@ -444,6 +533,8 @@ namespace CalendarWidget
             public List<int> ByMonth = new List<int>();
             public List<int> BySetPos = new List<int>();
 
+            private const int MaxInterval = 10000;   // 再大也只會讓日期算到超出範圍，限制住免得整數相乘溢位
+
             public static RRule Parse(string text, Ev ev)
             {
                 var r = new RRule();
@@ -456,7 +547,7 @@ namespace CalendarWidget
                     switch (key)
                     {
                         case "FREQ": r.Freq = val.ToUpperInvariant(); break;
-                        case "INTERVAL": int.TryParse(val, out r.Interval); if (r.Interval < 1) r.Interval = 1; break;
+                        case "INTERVAL": int.TryParse(val, out r.Interval); r.Interval = Math.Max(1, Math.Min(MaxInterval, r.Interval)); break;
                         case "COUNT": int.TryParse(val, out r.Count); break;
                         case "UNTIL": r.Until = ParseUntil(val, ev); break;
                         case "WKST": r.WeekStart = ParseDay(val); break;
@@ -484,7 +575,7 @@ namespace CalendarWidget
                 val = val.Trim();
                 DateTime d;
                 if (val.Length == 8 && DateTime.TryParseExact(val, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out d))
-                    return d.Date.AddDays(1).AddTicks(-1);   // 只有日期時，當天整天都算
+                    return d.Date == DateTime.MaxValue.Date ? DateTime.MaxValue : d.Date.AddDays(1).AddTicks(-1);   // 只有日期時，當天整天都算
                 bool utc = val.EndsWith("Z", StringComparison.OrdinalIgnoreCase);
                 string core = utc ? val.Substring(0, val.Length - 1) : val;
                 if (!DateTime.TryParseExact(core, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out d)) return null;
@@ -529,9 +620,19 @@ namespace CalendarWidget
                 int produced = 0;
                 for (int n = 0; n < 200000; n++)
                 {
-                    if (PeriodFirstDay(start, n) > limit.Date) yield break;
+                    // 週期算到 9999 年之後就沒有下一次了（日期會溢位），視為結束
+                    DateTime periodFirst = default(DateTime);
+                    List<DateTime> candidates = null;
+                    bool overflow = false;
+                    try
+                    {
+                        periodFirst = PeriodFirstDay(start, n);
+                        if (periodFirst <= limit.Date) candidates = Candidates(start, n);
+                    }
+                    catch (ArgumentOutOfRangeException) { overflow = true; }
+                    if (overflow || periodFirst > limit.Date) yield break;
 
-                    foreach (DateTime c in Candidates(start, n))
+                    foreach (DateTime c in candidates)
                     {
                         if (c < start) continue;
                         if (Until.HasValue && c > Until.Value) yield break;

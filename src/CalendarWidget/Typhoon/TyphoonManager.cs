@@ -186,10 +186,7 @@ namespace CalendarWidget
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(CachePath));
-                string temp = CachePath + ".tmp";
-                File.WriteAllText(temp, text, new UTF8Encoding(false));
-                if (File.Exists(CachePath)) File.Delete(CachePath);
-                File.Move(temp, CachePath);
+                AtomicFile.WriteAllText(CachePath, text, new UTF8Encoding(false));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

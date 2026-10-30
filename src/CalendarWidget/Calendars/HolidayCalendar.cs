@@ -91,7 +91,18 @@ namespace CalendarWidget
                 using (var resp = (HttpWebResponse)req.GetResponse())
                 using (var stream = resp.GetResponseStream())
                 using (var reader = new StreamReader(stream, Encoding.UTF8))
-                    text = reader.ReadToEnd();
+                {
+                    // 一整年的資料只有幾十 KB；設上限，不讓怪回應塞爆記憶體
+                    var sb = new StringBuilder();
+                    var buffer = new char[8192];
+                    int n;
+                    while ((n = reader.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        sb.Append(buffer, 0, n);
+                        if (sb.Length > 2 * 1024 * 1024) throw new InvalidDataException("資料太大，已中止");
+                    }
+                    text = sb.ToString();
+                }
             }
             catch (WebException ex)
             {

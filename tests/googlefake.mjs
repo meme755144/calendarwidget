@@ -168,7 +168,15 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { items: [ { summary: '團隊站會', status: 'confirmed', start: { dateTime: dt(4, 11, 0) }, end: { dateTime: dt(4, 11, 30) } } ] });
   }
 
-  if (url.pathname === '/tasks/v1/users/@me/lists') return json(res, 200, { items: [ { id: 'L1' } ] });
+  // 待辦清單分兩頁：第一頁 L1（附 nextPageToken），第二頁 L2
+  if (url.pathname === '/tasks/v1/users/@me/lists') {
+    if (url.searchParams.get('pageToken') === 'lp2') return json(res, 200, { items: [ { id: 'L2' } ] });
+    return json(res, 200, { nextPageToken: 'lp2', items: [ { id: 'L1' } ] });
+  }
+
+  if (url.pathname === '/tasks/v1/lists/L2/tasks') {
+    return json(res, 200, { items: [ { title: '第二頁清單的待辦', status: 'needsAction', due: `${dstr(5)}T00:00:00.000Z` } ] });
+  }
 
   if (url.pathname === '/tasks/v1/lists/L1/tasks') {
     return json(res, 200, { items: [
