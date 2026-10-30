@@ -265,6 +265,12 @@
                     <StackPanel x:Name="TyphoonHost" Margin="20" />
                 </ScrollViewer>
             </TabItem>
+
+            <TabItem Header="關於">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="AboutHost" Margin="20" />
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">

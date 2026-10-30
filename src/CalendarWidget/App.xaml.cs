@@ -107,6 +107,8 @@ namespace CalendarWidget
                 if (arg.StartsWith("--open-settings=")) int.TryParse(arg.Substring("--open-settings=".Length), out tab);
                 window.OpenSettings(tab);
             }
+            // 開發檢查畫面用：--check-update 啟動後立刻做一次「檢查更新」（網址可用 CALENDARWIDGET_UPDATE_URL 換成假伺服器）
+            if (Array.IndexOf(e.Args, "--check-update") >= 0) window.CheckForUpdates();
             if (Array.IndexOf(e.Args, "--typhoon-expand") >= 0) window.ExpandTyphoonForTest();
             if (Array.IndexOf(e.Args, "--settings-end") >= 0) window.ScrollSettingsForTest();
             if (Array.IndexOf(e.Args, "--maker-preview") >= 0) window.MakerPreviewForTest();

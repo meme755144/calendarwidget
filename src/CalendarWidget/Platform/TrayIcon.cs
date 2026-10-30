@@ -29,11 +29,13 @@ namespace CalendarWidget
         private const int CmdToday = 1;
         private const int CmdSettings = 2;
         private const int CmdExit = 3;
+        private const int CmdUpdate = 4;
 
         private static readonly IntPtr HWND_MESSAGE = new IntPtr(-3);
 
         private readonly Action _onSettings;
         private readonly Action _onToday;
+        private readonly Action _onCheckUpdate;
         private readonly Action _onExit;
         private readonly string _tip;
         private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
@@ -41,11 +43,12 @@ namespace CalendarWidget
         private IntPtr _icon;
         private bool _added;
 
-        public TrayIcon(string tip, Action onSettings, Action onToday, Action onExit)
+        public TrayIcon(string tip, Action onSettings, Action onToday, Action onCheckUpdate, Action onExit)
         {
             _tip = tip;
             _onSettings = onSettings;
             _onToday = onToday;
+            _onCheckUpdate = onCheckUpdate;
             _onExit = onExit;
 
             _source = new HwndSource(new HwndSourceParameters("CalendarWidgetTray")
@@ -103,6 +106,7 @@ namespace CalendarWidget
             {
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdSettings, "設定…");
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdToday, "回到今天");
+                AppendMenuW(menu, MF_STRING, (UIntPtr)CmdUpdate, "檢查更新…");
                 AppendMenuW(menu, MF_SEPARATOR, UIntPtr.Zero, null);
                 AppendMenuW(menu, MF_STRING, (UIntPtr)CmdExit, "結束");
 
@@ -116,6 +120,7 @@ namespace CalendarWidget
                 {
                     case CmdSettings: _onSettings(); break;
                     case CmdToday: _onToday(); break;
+                    case CmdUpdate: _onCheckUpdate(); break;
                     case CmdExit: _onExit(); break;
                 }
             }

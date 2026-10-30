@@ -1008,6 +1008,7 @@ namespace CalendarWidget
                 _settingsWindow = null;
                 TrimMemory();
             };
+            _settingsWindow.CheckUpdate = CheckForUpdates;
             _settingsWindow.SelectTab(tab);
             _settingsWindow.Show();
             WindowHelper.BringToFront(_settingsWindow);
@@ -1279,7 +1280,62 @@ namespace CalendarWidget
                 "月曆小工具",
                 OpenSettings,
                 GoToToday,
+                CheckForUpdates,
                 delegate { Application.Current.Shutdown(); });
+        }
+
+        // ---------- 檢查更新 ----------
+
+        private bool _checkingUpdate;
+        private ReminderWindow _updateWindow;
+
+        // 系統匣選單與「關於」分頁的「檢查更新」。只有使用者按了才會連線；結果用右下角的提醒框顯示
+        internal void CheckForUpdates()
+        {
+            if (_checkingUpdate) return;
+            _checkingUpdate = true;
+            System.Threading.Tasks.Task.Run(() => UpdateChecker.Check(AppInfo.Version)).ContinueWith(task =>
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    _checkingUpdate = false;
+                    ShowUpdateResult(task.IsFaulted ? new UpdateResult { Status = UpdateStatus.Failed, Message = "檢查更新時發生錯誤。" } : task.Result);
+                }));
+            });
+        }
+
+        private void ShowUpdateResult(UpdateResult result)
+        {
+            if (_updateWindow != null) _updateWindow.Close();
+            var win = new ReminderWindow();
+            _updateWindow = win;
+            win.Closed += delegate { if (_updateWindow == win) _updateWindow = null; };
+            win.Acknowledged += delegate { win.Close(); };
+            win.Snoozed += delegate { win.Close(); };
+
+            string current = "目前的版本：" + AppInfo.VersionText;
+            var lines = new List<ReminderLine>();
+            switch (result.Status)
+            {
+                case UpdateStatus.NewVersion:
+                    foreach (string note in UpdateChecker.NotesPreview(result.Notes, 6)) lines.Add(new ReminderLine { Text = note, Color = "#5B8DEF" });
+                    if (lines.Count == 0) lines.Add(new ReminderLine { Text = "按「前往下載」會用瀏覽器打開發行頁面，由你決定要不要下載。", Color = "#5B8DEF" });
+                    string url = result.Url;
+                    win.Acknowledged += delegate { AppInfo.OpenUrl(url); };
+                    win.ShowOrUpdate("有新版本 " + result.Version, current, lines, "前往下載", "之後再說");
+                    break;
+                case UpdateStatus.UpToDate:
+                    win.ShowOrUpdate("目前已是最新版本", current, lines, "好", null);
+                    break;
+                case UpdateStatus.NoRelease:
+                    lines.Add(new ReminderLine { Text = "GitHub 上還沒有發布任何版本。", Color = "#5B8DEF" });
+                    win.ShowOrUpdate("沒有可以更新的版本", current, lines, "好", null);
+                    break;
+                default:
+                    lines.Add(new ReminderLine { Text = result.Message, Color = "#FF6B7A" });
+                    win.ShowOrUpdate("檢查更新失敗", current, lines, "好", null);
+                    break;
+            }
         }
     }
 }

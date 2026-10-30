@@ -53,6 +53,7 @@ namespace CalendarWidget
             DateText.Text = subHeading;
             AckText.Text = ackText;
             SnoozeText.Text = snoozeText;
+            SnoozeButton.Visibility = string.IsNullOrEmpty(snoozeText) ? Visibility.Collapsed : Visibility.Visible;   // 只有一個按鈕的提示（例如「已是最新版本」）
 
             ItemList.Children.Clear();
             foreach (var line in lines)

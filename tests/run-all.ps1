@@ -52,7 +52,28 @@ if ($errs) { "$t BUILD ERRORS:"; $errs } else {
   $o | ? { $_ -match '^FAIL|CRASH' } | select -First 5
 }
 Stop-Process -Id $tf.Id -Force -ErrorAction SilentlyContinue
-$f = 'http://127.0.0.1:18766'
+
+# 檢查更新：需要假的 GitHub「最新發行版本」API；測試要讀倉庫根目錄的 CHANGELOG.md 與 csproj（確認版本號一致）
+Get-NetTCPConnection -LocalPort 18769 -State Listen -ErrorAction SilentlyContinue | % { Stop-Process -Id $_.OwningProcess -Force }
+$uf = Start-Process node -ArgumentList "`"$S\updatefake.mjs`"" -PassThru -WindowStyle Hidden
+Start-Sleep 1
+$t = 'updatetest'
+$d = "$W\data_$t"; if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d | Out-Null
+$env:CALENDARWIDGET_DATA = $d
+Push-Location "$S\$t"; $b = dotnet build -c Release 2>&1 | Out-String; Pop-Location
+$errs = $b -split "`n" | ? { $_ -match ' error ' } | select -First 3
+if ($errs) { "$t BUILD ERRORS:"; $errs } else {
+  $exe = Get-ChildItem "$S\$t\bin" -Recurse -Filter "$t.exe" | select -First 1
+  $root = Split-Path $S -Parent
+  $o = & $exe.FullName $root 2>&1 | % { "$_" }
+  # 第二次不設測試資料夾：確認環境變數不能把檢查更新導去別的伺服器
+  Remove-Item Env:CALENDARWIDGET_DATA
+  $o += & $exe.FullName $root '--no-override' 2>&1 | % { "$_" }
+  "$t  PASS=" + ($o | ? { $_ -match '^PASS' }).Count + " FAIL=" + ($o | ? { $_ -match '^FAIL|CRASH|must be unset' }).Count
+  $o | ? { $_ -match '^FAIL|CRASH|must be unset' } | select -First 5
+}
+Stop-Process -Id $uf.Id -Force -ErrorAction SilentlyContinue
+$f ='http://127.0.0.1:18766'
 $env:CALENDARWIDGET_GOOGLE_AUTH = "$f/auth"; $env:CALENDARWIDGET_GOOGLE_TOKEN = "$f/token"; $env:CALENDARWIDGET_GOOGLE_REVOKE = "$f/revoke"; $env:CALENDARWIDGET_GOOGLE_CALENDAR = "$f/calendar/v3"; $env:CALENDARWIDGET_GOOGLE_TASKS = "$f/tasks/v1"
 foreach ($t in 'googletest', 'mgrtest') {
   $log = "$W\google_$t.log"; Remove-Item $log -ErrorAction SilentlyContinue

@@ -9,6 +9,11 @@
     <AssemblyName>CalendarWidget</AssemblyName>
     <RootNamespace>CalendarWidget</RootNamespace>
     <DebugType>none</DebugType>
+    <!-- 版本號只在這裡設定一處（「關於」頁、檢查更新都從這裡讀）；發版時同步改 CHANGELOG.md -->
+    <Version>0.9.0</Version>
+    <Company>meme755144</Company>
+    <Product>CalendarWidget</Product>
+    <Copyright>Copyright (c) 2026 meme755144</Copyright>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- 輸出放在倉庫根目錄的 bin\（跟搬資料夾之前一樣），exe 路徑不變 -->
     <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\bin\</BaseOutputPath>
@@ -17,6 +22,11 @@
   <!-- 專案資料夾裡有 google-client.json 就把它包進程式（內建 Google 用戶端），沒有就不包 -->
   <ItemGroup Condition="Exists('google-client.json')">
     <EmbeddedResource Include="google-client.json" LogicalName="google-client.json" />
+  </ItemGroup>
+
+  <!-- 版本紀錄包進程式，「關於」頁直接顯示；只有一份，放在倉庫根目錄 -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
   </ItemGroup>
 
   <ItemGroup>

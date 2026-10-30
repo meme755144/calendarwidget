@@ -75,6 +75,7 @@ namespace CalendarWidget
             BuildGoogleTab();
             BuildIcsMakerTab();
             BuildTyphoonTab();
+            BuildAboutTab();
             WireCalendarDrag();
             RebuildCalendarList();
 
