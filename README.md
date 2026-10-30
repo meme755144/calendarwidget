@@ -1,8 +1,12 @@
 # 月曆小工具（CalendarWidget）
 
+[![最新版本](https://img.shields.io/github/v/release/meme755144/calendarwidget?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC)](https://github.com/meme755144/calendarwidget/releases/latest)
+[![授權](https://img.shields.io/github/license/meme755144/calendarwidget?label=%E6%8E%88%E6%AC%8A)](LICENSE)
+![執行環境](https://img.shields.io/badge/%E5%9F%B7%E8%A1%8C%E7%92%B0%E5%A2%83-.NET%20Framework%204.8-512BD4)
+
 固定在 Windows 桌面上的月曆：一眼看到本月、今天有什麼行程與待辦，到時間跳出提醒。很省資源（閒置時 CPU 幾乎是 0、記憶體約十幾 MB 到數十 MB），不需要安裝，也沒有伺服器，你的資料只存在你自己的電腦。
 
-> 目前是 **0.9 測試版**：功能大致齊全，但有幾項還沒在真實環境完整驗證，詳見 [CHANGELOG.md](CHANGELOG.md) 的「已知限制」。
+> 目前是**測試版**（上面的「最新版本」徽章是目前發佈的版本號）：功能大致齊全，但有幾項還沒在真實環境完整驗證，詳見 [CHANGELOG.md](CHANGELOG.md) 的「已知限制」。
 
 ## 功能
 
@@ -26,8 +30,10 @@
 **第一次執行可能出現 SmartScreen 警告。** 這個程式沒有數位簽章（簽章要花錢、還要驗證身分，目前先不做），Windows 會顯示「Windows 已保護您的電腦」。點「其他資訊」→「仍要執行」即可。想確認檔案沒有被更動，可以比對 SHA256（Releases 頁面每個版本都有寫）：
 
 ```
-Get-FileHash .\CalendarWidget-0.9.1.zip -Algorithm SHA256
+Get-FileHash .\CalendarWidget-x.y.z.zip -Algorithm SHA256
 ```
+
+（`x.y.z` 換成你下載的版本號。）
 
 **更新：** 系統匣圖示按右鍵 →「檢查更新」（或設定 →「關於」）。只有你按了才會連線到 GitHub 查詢；有新版會提示，由你決定要不要打開下載頁面。程式不會自己檢查，也不會自己下載或安裝。
 

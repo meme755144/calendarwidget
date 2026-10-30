@@ -6,7 +6,8 @@
 
 1. 工作區要乾淨，`./tests/run-all.ps1` 全部通過。
 2. 改 `src/CalendarWidget/CalendarWidget.csproj` 的 `<Version>`，並在 `CHANGELOG.md` 最上面加上新版本的段落（標題格式 `## [x.y.z] - YYYY-MM-DD`，日期是發版當天）。兩邊的版本號必須一致，`updatetest` 會檢查，忘了改會測試失敗。
-3. commit 並 push。
+3. 版本號只放在 csproj 與 CHANGELOG 這兩處。README 與網頁**不寫版本號**：README 最上面的「最新版本」徽章會自動顯示最新發佈的 Release，不用手動維護。發 1.0 正式版時，記得把 README 開頭「目前是測試版」那段拿掉。
+4. commit 並 push。
 
 ## 建置與打包
 
