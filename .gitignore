@@ -4,3 +4,6 @@ obj/
 
 *.user
 .vs/
+
+# 測試程式的編譯產物
+tests/**/out/
